@@ -1,0 +1,162 @@
+{% extends "ndf/base.html" %}
+{% load i18n %}
+{% load ndf_tags %}
+
+{% block title %} {{title}} {% endblock %}
+
+{% block help_content %}
+
+<h3>{% trans "About Bioapp/BioappItem" %}</h3>
+<p class="text-justify">By <b>Bioapp Item</b>, you can create a miscellaneous bioapp-question. This bioapp-question can be of, basically three types: <strong><i>short response, single-choice</i></strong> and <strong><i>multiple-choice</i></strong>.</p>
+
+<p class="text-justify">By <b>Bioapp</b>, you can build a bioapp having list of bioapp-items. Bioapp-Items can be added to quiz in two ways:
+  <ol  class="text-justify">
+   <li>By editing, Bioapp node (via collection-list).</li>
+   <li>By using Bioapp-Item button corresponding to the Bioapp node (i.e. this will automatically add the bioapp-item node to your bioapp node).</li>
+ </ol>
+</p>
+
+{% endblock %}
+
+
+{% block meta_content %}
+  <h3>x{% trans "Bioapps" %}</h3>
+
+ {% if user.is_authenticated %}
+  {% user_access_policy groupid request.user as user_access %}
+   {% if user_access == "allow" %}
+
+      <a class="small button" href="{% url 'bioapp_create' group_name_tag %}">
+	       <span class="fi-plus">&nbsp;{% trans "New" %}&nbsp;&nbsp;{{title}}</span>
+      </a>
+   
+  {% endif %}
+  {% endif %}
+
+{% endblock %}
+
+
+{% block search_content %}
+  {% include "ndf/node_search_base.html" %}
+{% endblock %}
+
+
+{% block related_content %}
+ 
+{% endblock %}
+
+
+{% block body_content %} 
+{% get_group_name groupid as group_name_tag %}
+<header class="row">
+
+  <h2 class="medium-12 columns">{% trans "Quiz" %}
+
+  </h2>
+
+  <div class="medium-12 columns">
+   <!-- Add button -->
+   {% if user.is_authenticated %}
+
+   {% user_access_policy groupid request.user as user_access %}
+   {% if user_access == "allow" %}
+      
+   <a href="{% url 'bioapp_create' group_name_tag %}" class="button small">
++ {% trans "Add" %} {{title}} </a>
+<a href="{% url 'bioapp_item_create' group_name_tag %}" class="button small">
++ {% trans "Add" %} {{title}} {% trans "Item" %} 
+</a>
+
+  {% endif %}
+  {% endif %}
+</div>
+</header>
+
+<div class="row">
+
+  <!-- column-left for Quiz -->
+  <div class="small-5 columns">
+
+    <h5>{% trans "Bioapp" %}</h5>
+    {% for node in bioapp_nodes %}
+      {% if node.created_by == request.user.pk %}  
+    <div class="row">
+
+      <div class="small-8 columns">
+       <label class="inline"><strong><a href="{% url 'bioapp_details' group_name_tag node %}">{{ node.name|truncatechars:20 }}</a></strong></label>
+     </div>
+
+     {% if user.is_authenticated %}
+     <div class="small-4 columns">
+     {% if user_access == "allow" %}
+       <a href="{% url 'bioapp_item_create' group_name_tag %}">
+         <input type="button" class="button small" style="float:right;" value="+ Add Bioapp Item" />
+       </a>
+     {% endif %}
+     </div>
+     {% endif %}
+
+   </div>
+   {% else %}
+    {% if node.access_policy == "PUBLIC" %}
+      <div class="row">
+
+      <div class="small-8 columns">
+       <label class="inline"><strong><a href="{% url 'bioapp_details' group_name_tag node %}">{{ node.name|truncatechars:20 }}</a></strong></label>
+     </div>
+
+     {% if user.is_authenticated %}
+     <div class="small-4 columns">
+     {% if user_access == "allow" %}
+       <a href="{% url 'bioapp_item_create' group_name_tag %}">
+         <input type="button" class="button small" style="float:right;" value="+ Add Bioapp Item" />
+       </a>
+     {% endif %}
+     </div>
+     {% endif %}
+
+   </div>
+    {% endif %}
+    {% endif %}
+
+   {% empty %}
+   <div class="row">
+    <div class="small-12 columns">
+      <h5>{% trans "This group doesn't have any bioapp. Be the first to create a Bioapp!" %}</h5>
+    </div>
+   </div>
+
+ </div>
+ {% endfor %}
+
+</div>
+
+<!-- column-right for Bioapp-Items -->
+<div class="small-7 columns" >
+
+ <h5>{% trans "Bioapp Items" %}</h5>
+  {% for node in quiz_item_nodes %}
+  <div class="row" style="padding-left:8px;">
+
+    <div class="small-12 columns">
+     <label><strong><a href="{% url 'bioapp_details' group_name_tag node %}">{{ node.html_content|safe|truncatewords:30 }}</a></strong></label>
+   </div>
+
+ </div>
+
+ {% empty %}
+ <div class="row">
+  <div class="small-12 columns">
+    <h5>{% trans "This group doesn't have any bioapp-items. Be the first to create a Bioapp-Item!" %}</h5>
+  </div>
+ </div>
+
+</div>
+{% endfor %}
+
+</div>
+</div>
+
+
+{% endblock %}
+

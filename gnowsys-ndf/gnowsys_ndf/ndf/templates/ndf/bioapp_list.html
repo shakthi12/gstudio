@@ -1,0 +1,277 @@
+{% extends "ndf/base.html" %}
+{% load i18n %}
+{% load ndf_tags %}
+
+{% block title %} {{title}} {% endblock %}
+
+{% block body_content %}
+
+<h3>{% trans "Personal Details" %}</h3>
+
+<p class="text-justify">
+  <ol  class="text-justify">
+   <li>Name</li>
+    First name: <input type="text" name="fname">Middle name: <input type="text" name="mname">Last name: <input type="text" name="lname"><br>
+   <li>Contact Address<textarea></textarea></li>
+   <li>Contact Email<input type="text" name="email"></li>
+   <li>Land line<input type="text"></li>
+   <li>Mobile<input type="text"></li>
+   <li>DOB
+    <select name="DOBDay">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+    <option value="9">9</option>
+    <option value="10">10</option>
+    <option value="11">11</option>
+    <option value="12">12</option>
+    <option value="13">13</option>
+    <option value="14">14</option>
+    <option value="15">15</option>
+    <option value="16">16</option>
+    <option value="22">22</option>
+    <option value="23">23</option>
+    <option value="24">24</option>
+    <option value="25">25</option>
+    <option value="31">31</option>
+    </select>
+    
+</select>
+<select name="DOBMonth">
+Month
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+
+</select>
+
+<select name="DOBYear">
+Year
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+</li>
+<li>Place of birth<input type="text"></li>
+ </ol>
+</p>
+
+<h3>{% trans "Qualifications" %}</h3>
+<p class="text-justify">
+  <ol  class="text-justify">
+   <li>Secondary School</li>
+    Organization <input type="text" name="name">Year_of_passing<select name="DOBYear">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+Grade <input type="text" name="grade">
+<li>HigherSecondary School</li>
+    Organization <input type="text" name="name">Year_of_passing<select name="DOBYear">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+Grade <input type="text" name="grade">
+<li>Graduation</li>
+    Organization <input type="text" name="name">Year_of_passing<select name="DOBYear">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+Grade <input type="text" name="grade">
+<li>Post Graduation</li>
+    Organization <input type="text" name="name">Year_of_passing<select name="DOBYear">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+Grade <input type="text" name="grade">
+<li>Research Degree</li>
+    Organization <input type="text" name="name">Year_of_passing<select name="DOBYear">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+Grade <input type="text" name="grade">
+<li>Other Degrees</li>
+    Organization <input type="text" name="name">Year_of_passing<select name="DOBYear">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+Grade <input type="text" name="grade">
+</ol>
+</p>
+<h3>{% trans "Service Experience" %}</h3>
+<p class="text-justify">
+  <ol  class="text-justify">
+   <li>Present Position</li>
+    Organization name <input type="text" name="name">Position Held <input type="text" name="position">Start_time</select>
+<select name="Month">
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+
+</select><select name="Year">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+End_time</select>
+<select name="Month">
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+</select>
+<select name="Year">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+<li>Past Position</li>
+    Organization name <input type="text" name="name">Position Held <input type="text" name="position">Start_time</select>
+<select name="Month">
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+
+</select><select name="Year">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+End_time</select>
+<select name="Month">
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+</select>
+<select name="Year">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+<li>Honorary Position</li>
+Role <input type="text" name="role">
+Organization name <input type="text" name="name">Start_time</select>
+<select name="Month">
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+
+</select><select name="Year">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+End_time</select>
+<select name="Month">
+<option value="January">January</option>
+<option value="February">February</option>
+<option value="March">March</option>
+<option value="April">April</option>
+<option value="May">May</option>
+<option value="June">June</option>
+<option value="July">July</option>
+<option value="August">August</option>
+<option value="September">Septemeber</option>
+<option value="October">October</option>
+<option value="November">Novemeber</option>
+<option value="December">December</option>
+</select>
+<select name="Year">
+<option value="1990">1990</option>
+<option value="1991">1991</option>
+<option value="1992">1992</option>
+<option value="1993">1993</option>
+<option value="1994">1994</option>
+</select>
+</ol>
+</p>
+{% endblock %}
+
+
