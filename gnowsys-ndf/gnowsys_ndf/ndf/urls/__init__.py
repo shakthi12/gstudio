@@ -28,7 +28,7 @@ urlpatterns = patterns('',
     (r'^mobwrite/', 'gnowsys_ndf.mobwrite.views.mobwrite'),
     (r'^admin/', include(admin.site.urls)),
     (r'^$', HomeRedirectView.as_view()),        
-
+    (r'^(?P<group_id>[^/]+)/bioapp', include('gnowsys_ndf.ndf.urls.bioapp')),
     (r'^(?P<group_id>[^/]+)/file', include('gnowsys_ndf.ndf.urls.file')),
     (r'^(?P<group_id>[^/]+)/image', include('gnowsys_ndf.ndf.urls.image')),
     (r'^(?P<group_id>[^/]+)/video', include('gnowsys_ndf.ndf.urls.video')),

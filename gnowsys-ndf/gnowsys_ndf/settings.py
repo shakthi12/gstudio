@@ -202,11 +202,11 @@ EMAIL_HOST_PASSWORD = ''
 DEFAULT_FROM_EMAIL = 'testing@example.com'
 
 #SMTP setting for sending mail (Using gmail SMTP server)
-#EMAIL_USE_TLS = True
-#EMAIL_HOST = 'smtp.gmail.com'
-#EMAIL_PORT = 587
-#EMAIL_HOST_USER = 'yourcompletegmailaddr'
-#EMAIL_HOST_PASSWORD = 'yourpassword'
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'shakfire2010@gmail.com'
+EMAIL_HOST_PASSWORD = 'obligation'
 
 # strength of a password
 PASSWORD_MIN_LENGTH = 8
@@ -430,7 +430,7 @@ AUTHOR_AGENCY_TYPES=["Student","Teacher","TeacherTrainer","Faculty","Researcher"
 # Built-in GAPPS list 
 # DON'T EDIT THIS LIST - for listing purpose on gapps-menubar/gapps-iconbar, instead make use of below one in local_setting file
 # ONLY TO BE EDITED - in case of adding new built-in GAPPS
-GAPPS = [u"Page", u"File", u"Group", u"Image", u"Video", u"Forum", u"Quiz", u"Course", u"Module", u"Batch", u"Task", u"WikiData", u"Browse Topic", u"Browse Resource", u"Meeting",u"Bib_App"]
+GAPPS = [u"Page", u"File", u"Group", u"Image", u"Video", u"Forum", u"Quiz", u"Course", u"Module", u"Batch", u"Task", u"WikiData", u"Browse Topic", u"Browse Resource", u"Meeting",u"Bib_App", u"bioapp"]
 
 # This is to be used for listing default GAPPS on gapps-menubar/gapps-iconbar
 # DON'T EDIT this variable here.
