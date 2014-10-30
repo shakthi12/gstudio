@@ -1,4 +1,6 @@
 {% load i18n %}
+{% load pagination_tags %}
+{% load ndf_tags %}
 <br/>
 <div>
   <!-- Title only row -->
@@ -12,7 +14,6 @@
     </div>
   </div>  
   <br/>
-  
 
   <!-- Row containing LHS Resources and middle Navigation and RHS Collection -->
   <div class="row">
@@ -25,35 +26,51 @@
         <!-- Searchbox as first li in the  Resources drawer -->
         {% if drawer1 != "None" %}
         <li class="price">
-          <input type="text" class="margin-0" id="{{widget_for}}_search" placeholder="Type here to search in the resources"/>
+            <input type="text" class="margin-0 search_items" id="{{widget_for}}_search" placeholder="Type atleast 3 characters to search in the resources"/>            
         </li>
+        
+        <div class="push-3 searching" style="display:none;"><progress></progress></div>
 
-        {% for key, value in drawer1.items %}
+        {% for key,value in drawer1.items %}
 
         <li class="bullet-item text-left" value="{{key}}" > 
-          <!-- <input type="hidden" class="node_id" value="{{key}}" name="{{value.name}}" /> -->
-          <input type="hidden" class="node_id" value="{{key}}" name="{{value}}" />
+          <input type="hidden" class="node_id" value="{{key}}" name="{{value.name}}" />
+          <!-- <input type="hidden" class="node_id" value="{{key}}" name="{{value}}" /> -->
           <div class="row">
-            <div class="small-1 columns resource-type-image" style="background-image: url({% url 'getImageThumbnail' groupid key %}), url(/static/ndf/images/doc.png); ">
+            <div class="small-1 columns resource-type-image" 
+            style="background-image: url({% if 'image' in value.mime_type %}
+                                            {% url 'getFileThumbnail' groupid key %}
+                                         {% elif 'video' in value.mime_type and 'Pandora_video' in value.member_of_names_list %} 
+                                            {% get_source_id key as source_id %}
+                                            'http://wetube.gnowledge.org/{{source_id}}/icon128.jpg'
+                                         {% elif 'video' not in value.mime_type %}
+                                            /static/ndf/images/doc.png
+                                         {% endif %}
+                                        ); ">
+              {% if 'video' in value.mime_type and value.member_of_names_list|join:', ' != "Pandora_video" %}
+                <video width="45px;" src="{% url 'getFileThumbnail' groupid key %}"/>                  
+              {% endif %}
+
             </div>
 
             <div class="small-11 columns">
 
               <div class="row">
                 <div class="small-12 columns">
-                  <!-- <b> {{value.name}} </b> -->
-                  <b> {{value}} </b>
-                </div>                
-                <!-- <div class="small-12 columns text-left" style="padding-top:3px">
-                  <i class="posted-by" >{{ value.member_of_names_list|join:', ' }} by <a class="user" href="{#% url 'dashboard' value.created_by %#}" data-gnow="">{{value.user_details_dict.created_by}}</a> on {{value.created_at|date:"j F Y"}} </i>
-                </div> -->     
+                  <b> {{value.name}} </b>
+                  <!-- <b> {{value}} </b> -->
+                </div>       
+
+                <div class="small-12 columns text-left" style="padding-top:3px">
+                  <i class="posted-by" >{{ value.member_of_names_list|join:', ' }} by <a class="user" href="{% url 'dashboard' value.created_by %}" data-gnow="">{{value.user_details_dict.created_by}}</a> on {{value.created_at|date:"j F Y"}} </i>
+                </div>     
               </div>
 
               <div class="row">
 
-               <!-- <div class="small-12 columns text-left" style="padding-top:5px;">
-		 {{ value.html_content|safe|striptags|truncatechars:50 }}
-               </div> -->  
+               <div class="small-12 columns text-left" style="padding-top:5px;">
+		            {{ value.html_content|safe|striptags|truncatechars:50 }}
+               </div>  
               </div>
             </div>
           </div>
@@ -65,31 +82,140 @@
         <li class="bullet-item" > <i> {% trans "No content of selected type !" %} </i> </li>
         {% endif %}
 
+        {% if is_RT != "RelationType" %}
+        <!-- pagination -->
+        {% if page_info %}
+          {% if page_info.num_pages > 1 %}
+            <div class="pagination-centered">
+              <ul class="pagination" role="menubar" aria-label="Pagination">
+                {% if page_info.num_pages < 11 %}
+          
+
+                  {% for each_page in page_info.page_range %}
+
+                    {% if page_info.current_page == each_page %}
+                    <li class="current">
+                    {% else %}
+                    <li>
+                    {% endif %}
+                      <a class="next_prev" name="{{each_page}}"> {{ each_page }} </a>
+                    </li>
+
+                  {% endfor %}
+                
+                {% else %}
+
+                  {% if page_info.has_previous %}
+
+                    <!-- for  << previous  text -->
+                    <li class="arrow">
+                      <a class="next_prev" name="{{page_info.previous_page}}">&laquo; Previous</a>
+                    </li>
+
+                    <!-- for page 1, page 2 and ... -->
+                    {% if page_info.previous_page|add:"-2" != 1 and page_info.previous_page|add:"-2" > 0 %}
+                      <li><a class="next_prev" name="1">1</a></li>
+                      <li><a class="next_prev" name="2">2</a></li>
+                      <li class="unavailable" aria-disabled="true"><span class="subheader">&hellip;</span></li>
+                    {% endif %}
+              
+                    <!-- for previous page -->
+                    <li>
+                      <a class="next_prev" name="{{page_info.previous_page}}">
+                        {{ page_info.previous_page }}
+                      </a>
+                    </li>
+                  {% endif %}
+
+                  <!-- for current page -->
+                  <li class="current"><a class="next_prev" name="{{page_info.current_page}}">{{ page_info.current_page }}</a></li>
+                  
+
+                  {% if page_info.has_next %}
+
+                    <!-- for next page -->
+                    <li>
+                      <a class="next_prev" name="{{page_info.next_page}}">
+                        {{ page_info.next_page }}
+                      </a>
+                    </li>
+                    {% if page_info.next_page != page_info.num_pages %}
+                      
+                      {% if page_info.next_page != page_info.num_pages|add:"-1" %}
+
+                        <!-- for .... -->
+                        {% if page_info.next_page != page_info.num_pages|add:"-2" %}
+                          <li class="unavailable" aria-disabled="true"><span class="subheader">&hellip;</span></li>
+                        {% endif %}
+                
+                        <!-- for secondlast page -->
+                        <li>
+                          <a class="next_prev" name="{{page_info.num_pages|add:'-1'}}">
+                            {{ page_info.num_pages|add:"-1" }}
+                          </a>
+                        </li>
+                      {% endif %}
+                      
+                      <!-- for last page -->
+                      <li>
+                        <a class="next_prev" name="{{page_info.num_pages}}">
+                          {{ page_info.num_pages }}
+                        </a>
+                      </li>
+                    {% endif %}
+
+                    <!-- for text Next >> -->
+                    <li class="arrow">
+                      <a class="next_prev" name="{{page_info.next_page}}">Next &raquo;</a>
+                    </li>
+                
+                  {% endif %}
+
+                {% endif %}
+              </ul>
+            </div>
+          {% endif %}
+        {% endif %}
+        <!-- end of pagination -->
+        {% endif %}
+
+        <!-- <div class="text-center" > <a class="prev"><< prev</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="next">next >></a> </div> -->
       </ul>
       
     </div>
 
     <!-- For arrows Up, Down, Left, Right -->
-    <div class="small-1 columns  text-center" >
+    <div class="small-1 columns  text-center" >     
 
-    	<span id="{{widget_for}}_btnUp" class="fontsize-x-large">
-     		<i class="fi-arrow-up coll-arrows"></i>
-    	</span>
-    	<br/>
-     
-	    <span id="{{widget_for}}_btnRight" class="fontsize-x-large">
-     		<i class="fi-arrow-right coll-arrows"></i>
-     	</span>
-     	<br/>
-     
-	    <span id="{{widget_for}}_btnLeft" class="fontsize-x-large">
-     		<i class="fi-arrow-left coll-arrows"></i>
-     	</span>
-     	<br/>	
-     
-	    <span id="{{widget_for}}_btnDown" class="fontsize-x-large">
-     		<i class="fi-arrow-down coll-arrows"></i>
-     	</span>
+      {% if not selection %}
+        <br/><br/><br/><br/>
+      	<span id="{{widget_for}}_btnUp" class="fontsize-x-large">
+       		<i class="button fi-arrow-up coll-arrows"></i>
+      	</span>
+      	<br/>
+
+  	    <span id="{{widget_for}}_btnRight" class="fontsize-x-large right1">
+       		<i class="button fi-arrow-right coll-arrows"></i>
+       	</span>
+       	<br/>      
+      
+  	    <span id="{{widget_for}}_btnLeft" class="fontsize-x-large">
+       		<i class="button fi-arrow-left coll-arrows"></i>
+       	</span>        
+       	<br/>	
+
+  	    <span id="{{widget_for}}_btnDown" class="fontsize-x-large">
+       		<i class="button fi-arrow-down coll-arrows"></i>
+       	</span>
+
+      {% else %}
+
+        <br/><br/><br/><br/><br/><br/><br/><br/>
+        <span id="{{widget_for}}_btnRight" class="fontsize-x-large">
+          <i class="button fi-arrow-right coll-arrows"></i>
+        </span>
+
+      {% endif %}
      	     
    </div>
 
@@ -100,10 +226,24 @@
       {% if drawer2 != "None" %}
 
       {% for value in drawer2 %}
+
       <li class="bullet-item" value="{{value.pk}}" > 
         <input type="hidden" class="node_id {{widget_for}}_values" value="{{value.pk}}" name="{{value.name}}" />
         <div class="row">
-          <div class="small-1 columns resource-type-image" style="background-image: url({% url 'getImageThumbnail' groupid value.pk %}), url(/static/ndf/images/doc.png); ">
+          <div class="small-1 columns resource-type-image" 
+          style="background-image: url({% if 'image' in value.mime_type %}
+                                            {% url 'getFileThumbnail' groupid value.pk %}
+                                         {% elif 'video' in value.mime_type and 'Pandora_video' in value.member_of_names_list %} 
+                                            {% get_source_id value.pk as source_id %}
+                                            'http://wetube.gnowledge.org/{{source_id}}/icon128.jpg'
+                                         {% elif 'video' not in value.mime_type %}
+                                            /static/ndf/images/doc.png
+                                         {% endif %}
+                                        ); ">
+              {% if 'video' in value.mime_type and value.member_of_names_list|join:', ' != "Pandora_video" %}
+                <video width="40px;" src="{% url 'getFileThumbnail' groupid value.pk %}"/>                  
+              {% endif %}
+
           </div>
 
           <div class="small-11 columns">
@@ -141,165 +281,312 @@
 
 <input id="{{widget_for}}_list" type="hidden" name="{{widget_for}}_list" value="" />
 
-
 <script type="text/javascript">
+  var is_RT = "{{is_RT}}";
 
-    //To allocate space of 10 resources listing for drawers.
-    liHeight = $("#{{widget_for}}_drawer1 > li").outerHeight();
-    // alert("liHeight" + liHeight + " -- " + (liHeight * 6))
-    $(".resource-drawer").height(430);
-
-    // To select the single as well as multiple items from list 
-    $(document).on('click','#{{widget_for}}_drawer1 li.bullet-item',function(e){
-      // $("#{{widget_for}}_drawer1 li.bullet-item").on("click", function(e) {
-      if (e.ctrlKey)
-      {        
-        $(this).toggleClass('selected-resource');
-      } 
-      else
-      {
-        $('.bullet-item').removeClass('selected-resource');           
-        $(this).addClass('selected-resource');        
-      }                   
-        
-    }); 
-
-    $(document).on('click','#{{widget_for}}_drawer2 li.bullet-item',function(e){
-      // $("#{{widget_for}}_drawer2 li.bullet-item").click(function(e){
-      
-      if (e.ctrlKey)
-      {        
-        $(this).toggleClass('selected-resource');
-      } 
-      else
-      {
-        $('.bullet-item').removeClass('selected-resource');           
-        $(this).addClass('selected-resource');        
-      }     
-      
-    });
-    
-    
-      //For left drawer selected resources and right button click
-      $("#{{widget_for}}_btnRight").click(function() { 
-        $("#{{widget_for}}_drawer1 li.selected-resource input.node_id").addClass("{{widget_for}}_values");
-        // $("#{{widget_for}}_drawer1 li.selected-resource input.node_id.drawer2").each(function (){
-        //   alert("value : " + $(this).val());
-        // });
-        var selectedOpts = $("#{{widget_for}}_drawer1 li.selected-resource");
-        $("#{{widget_for}}_drawer1 li.selected-resource").removeClass("selected-resource");
-        
-
-        if (selectedOpts.length == 0){
-          alert("Nothing to move.");
-        }
-
-        $("#{{widget_for}}_drawer2").append($(selectedOpts).clone(true));
-        $(selectedOpts).remove();
-        var innerhtml = $("#{{widget_for}}_drawer1").html()
-        $(".{{widget_for}}.pricing-table.drawer1").html(innerhtml);
-      });  
-
-      //For right drawer selected resources and left button click
-      $("#{{widget_for}}_btnLeft").click(function() {
-        $("#{{widget_for}}_drawer2 li.selected-resource input.node_id.{{widget_for}}_values").removeClass("{{widget_for}}_values");
-        var selectedOpts = $("#{{widget_for}}_drawer2 li.selected-resource");
-        $("#{{widget_for}}_drawer2 li.selected-resource").removeClass("selected-resource");
-
-        if (selectedOpts.length == 0) {
-          alert("Nothing to move.");
-        }
-
-        $("#{{widget_for}}_drawer1").append($(selectedOpts).clone(true));
-        $(selectedOpts).remove();
-        var innerhtml = $("#{{widget_for}}_drawer1").html()
-        $(".{{widget_for}}.pricing-table.drawer1").html(innerhtml);
-      });  
-
-
-      function checkUpDownButton()
-      {
-        for(var i=0; i<collSelected.length-1; i++)
-        {
-          var flag;
-          if( (collSelected[i].nextElementSibling) == (collSelected[i+1]) ){
-            flag = true;
-          }
-          else{
-            flag = false;
-          }
-        }
-        return flag;
-      }
-
-      //For UP Button pressed :
-      $("#{{widget_for}}_btnUp").click(function() {
-
-        collSelected = $("#{{widget_for}}_drawer2 li.selected-resource");
-
-        if( collSelected ){
-
-          //If multiple element's are selected :
-          if( collSelected.length > 1 ){
-
-            if( checkUpDownButton ){
-              prevFirstSel = collSelected[0].previousElementSibling;
-              lastSel = collSelected[collSelected.length-1];
-
-              $(prevFirstSel).insertAfter(lastSel);  
-            }
-          } 
-          
-          //If only one element is selected :
-          else{
-            currSel =  collSelected[0];
-            $(currSel).insertBefore(currSel.previousElementSibling);
-          }
-        }
-      });
-
-      //For DOWN Button pressed :
-      $("#{{widget_for}}_btnDown").click(function() {
-
-        collSelected = $("#{{widget_for}}_drawer2 li.selected-resource");
-
-        if( collSelected ){
-
-          //If multiple element's are selected :
-          if( collSelected.length > 1 ){
-
-            if( checkUpDownButton ){
-              FirstSel = collSelected[0];
-              nexttoLastSel = collSelected[collSelected.length-1].nextElementSibling;
-
-              $(nexttoLastSel).insertBefore(FirstSel);  
-            }
-          } 
-          
-          //If only one element is selected :
-          else{
-            currSel =  collSelected[0];
-            $(currSel).insertAfter(currSel.nextElementSibling);
-          }
-        }
-      });
-
-
-
-
-  // Search-Box for LHS drawer of resources
-    $(document).on('keydown keypress keyup change', '#{{widget_for}}_search' ,function(){
-    //$('#{{widget_for}}_search').bind('keydown keypress keyup change', function() {
-    var search = (this.value).toLowerCase();
-    //var $li = $("#{{widget_for}}_drawer1 li.bullet-item").hide()
-    var $li = $(".{{widget_for}}.pricing-table.drawer1 li.bullet-item").hide()
-    $li.filter(function() {
-      return $(this).text().toLowerCase().indexOf(search) >= 0;
-    }).show();
-   
-   
+  $(document).ready(function(){
+    if ("{{search_name}}"){
+      $(".search_items").val("{{search_name}}");
+    }
   });
 
+  //To allocate space of 10 resources listing for drawers.
+  liHeight = $("#{{widget_for}}_drawer1 > li").outerHeight();
+  $(".resource-drawer").height(430);
+
+  // To select the single as well as multiple items from list
+  $(document).on('click','#{{widget_for}}_drawer1 li.bullet-item',function(e){
+    // $("#{{widget_for}}_drawer1 li.bullet-item").on("click", function(e) {
+    if (e.ctrlKey) {
+      $(this).toggleClass('selected-resource');
+    }
+    else {
+      $('.bullet-item').removeClass('selected-resource');
+      $(this).addClass('selected-resource');
+    }
+  });
+
+  $(document).on('click','#{{widget_for}}_drawer2 li.bullet-item',function(e){
+    // $("#{{widget_for}}_drawer2 li.bullet-item").click(function(e){
+    
+    if (e.ctrlKey) {
+      $(this).toggleClass('selected-resource');
+    }
+    else
+    {
+      $('.bullet-item').removeClass('selected-resource');
+      $(this).addClass('selected-resource');
+    }
+  });
+
+  //For left drawer selected resources and right button click
+  $("#{{widget_for}}_btnRight").click(function() {
+    $("#{{widget_for}}_drawer1 li.selected-resource input.node_id").addClass("{{widget_for}}_values");
+
+    var selectedOpts = $("#{{widget_for}}_drawer1 li.selected-resource");
+    $("#{{widget_for}}_drawer1 li.selected-resource").removeClass("selected-resource");
+
+    if (selectedOpts.length == 0) {
+      alert("Nothing to move.");
+    }
+
+    $("#{{widget_for}}_drawer2").append($(selectedOpts).clone(true));
+
+    $(selectedOpts).remove();
+    // var innerhtml = $("#{{widget_for}}_drawer1").html()
+    // $(".{{widget_for}}.pricing-table.drawer1").html(innerhtml);
+
+    if (is_RT != "RelationType") {
+      // write comment
+      var cn_arr = []
+      $(".node_id").each(function (){
+        if ($(this).parent(".bullet-item").parent("#{{widget_for}}_drawer2").attr("id") == "{{widget_for}}_drawer2") {
+          cn_arr.push($(this).val());
+        }
+      });
+
+      var cn_list = cn_arr.join(',');
+      var field = "{{widget_for}}";
+
+      $.ajax({
+        type: "POST",
+        url: "{% url 'select_drawer' groupid %}",
+        datatype: "html",
+        data:{
+          collection_list: cn_list,
+          // homo_collection: "{{checked}}",
+          node_id: '{{node_id}}',
+          field: field,
+          page_no: 1,
+          csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success: function(data) {
+
+          if ($.trim(data) === "Warning") {
+
+            var r = confirm("Do you want to save this selection for "+ field +" ?");
+
+            if (r == true){
+
+              $.ajax({
+                type: "POST",
+                url: "{% url 'select_drawer' groupid %}",
+                datatype: "html",
+                data: {   
+                  collection_list: cn_list,
+                  node_id: '{{node_id}}',
+                  field: field,
+                  selection_save: "True",
+                  page_no: 1,
+                  csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(data) {
+                  // cnt(data)
+                  alert("Saved selection as "+ field +" Successfully");
+
+                  if (field == "collection"){
+                    $("input:radio").prop('checked', false);
+                    $(".collection_tab").trigger('click');
+                  }
+                  if (field == "prior_node"){
+                    $(".prior_node_tab").trigger('click');
+                  }
+                  if (field == "teaches"){
+                    $(".teaches_tab").trigger('click');
+                  }
+                  if (field == "assesses"){
+                    $(".assesses_tab").trigger('click');
+                  }
+
+                }
+
+              });
+            }
+            else{
+
+              if (field == "collection"){
+                $("input:radio").prop('checked', false);
+                $(".collection_tab").trigger('click');
+              }
+              if (field == "prior_node"){
+                $(".prior_node_tab").trigger('click');
+              }
+              if (field == "teaches"){
+                $(".teaches_tab").trigger('click');
+              }
+              if (field == "assesses"){
+                $(".assesses_tab").trigger('click');
+              }
+
+            }
+
+
+          }
+
+
+        }
+      });
+
+      // end of comment
+    }
+  });
+
+  //For right drawer selected resources and left button click
+  $("#{{widget_for}}_btnLeft").click(function() {
+    $("#{{widget_for}}_drawer2 li.selected-resource input.node_id.{{widget_for}}_values").removeClass("{{widget_for}}_values");
+    var selectedOpts = $("#{{widget_for}}_drawer2 li.selected-resource");
+    $("#{{widget_for}}_drawer2 li.selected-resource").removeClass("selected-resource");
+
+    if (selectedOpts.length == 0) {
+      alert("Nothing to move.");
+    }
+
+    $("#{{widget_for}}_drawer1").append($(selectedOpts).clone(true));
+    $(selectedOpts).remove();
+    // var innerhtml = $("#{{widget_for}}_drawer1").html()
+    // $(".{{widget_for}}.pricing-table.drawer1").html(innerhtml);
+  });
+
+  function checkUpDownButton() {
+    for(var i=0; i<collSelected.length-1; i++)
+    {
+      var flag;
+      if( (collSelected[i].nextElementSibling) == (collSelected[i+1]) ){
+        flag = true;
+      }
+      else{
+        flag = false;
+      }
+    }
+    return flag;
+  }
+
+  //For UP Button pressed :
+  $("#{{widget_for}}_btnUp").click(function() {
+
+    collSelected = $("#{{widget_for}}_drawer2 li.selected-resource");
+
+    if( collSelected ){
+
+      //If multiple element's are selected :
+      if( collSelected.length > 1 ){
+
+        if( checkUpDownButton ){
+          prevFirstSel = collSelected[0].previousElementSibling;
+          lastSel = collSelected[collSelected.length-1];
+
+          $(prevFirstSel).insertAfter(lastSel);
+        }
+      }
+
+      //If only one element is selected :
+      else{
+        currSel =  collSelected[0];
+        $(currSel).insertBefore(currSel.previousElementSibling);
+      }
+    }
+  });
+
+  //For DOWN Button pressed :
+  $("#{{widget_for}}_btnDown").click(function() {
+
+    collSelected = $("#{{widget_for}}_drawer2 li.selected-resource");
+
+    if( collSelected ){
+
+      //If multiple element's are selected :
+      if( collSelected.length > 1 ){
+
+        if( checkUpDownButton ){
+          FirstSel = collSelected[0];
+          nexttoLastSel = collSelected[collSelected.length-1].nextElementSibling;
+
+          $(nexttoLastSel).insertBefore(FirstSel);  
+        }
+      }
+
+      //If only one element is selected :
+      else{
+        currSel =  collSelected[0];
+        $(currSel).insertAfter(currSel.nextElementSibling);
+      }
+    }
+  });
+
+  // Search-Box for LHS drawer of resources
+  // $('#{{widget_for}}_search').bind('keydown keypress keyup change', function() {
+  $('#{{widget_for}}_search').bind('keydown change', function() {
+    if (is_RT == "RelationType") {
+      var search_text = (this.value).toLowerCase();
+      var search_text_len = search_text.length
+
+      var $li = $( ".{{widget_for}}.pricing-table.drawer1 li.bullet-item" );
+
+      if (search_text_len > 2) {
+        $(".searching").css("display", "block");
+        $li.each(function() {
+          if ($(this).text().toLowerCase().indexOf(search_text) >= 0) {
+            $(this).css("display", "block");
+          }
+
+          else{
+            $(this).css("display", "none");
+          }
+        });
+        $(".searching").css("display", "none");
+      }
+
+      else if (search_text_len == 2) {
+        $li.filter(function() {
+          if ($(this).css("display") == "none") {
+            return true;
+          }
+
+          else {
+            return false;
+          }
+        }).show();
+      }
+    }
+
+    else {
+      var len = (this.value.length);
+      var field = "{{widget_for}}";
+
+      if (len >= 2){
+        $(".searching").css("display", "block");
+
+        $.ajax({
+          type: "POST",
+          url: "{% url 'search_drawer' groupid %}",
+          datatype: "html",
+          data:{
+            search_name: this.value,
+            node_id: '{{node_id}}',
+            field: field,
+            selection: "{{selection}}",
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+          },
+          success: function(data) {
+            $(".searching").css("display", "none");
+            if (field == "collection"){
+              $("#collection_drawer").html(data);  
+            }
+            if (field == "prior_node"){
+              $("#prior_node_drawer").html(data);
+            }
+            if (field == "teaches"){
+              $("#teaches_drawer").html(data);
+            }
+            if (field == "assesses"){
+              $("#assesses_drawer").html(data);
+            }
+            
+          }          
+        });
+      }
+    }
+  });
 </script>
 
 

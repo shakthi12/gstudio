@@ -270,17 +270,17 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Absolute filesystem path to the directory that will hold user-uploaded files.
-# Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = os.path.join(os.path.dirname(__file__), 'ndf/static/')
-
 # Django-provide base translation in django/conf/locale.
 LOCALE_PATHS = (os.path.join(os.path.dirname(__file__), '..','conf/locale/'),)
+
+# Absolute filesystem path to the directory that will hold user-uploaded files.
+# Example: "/home/media/media.lawrence.com/media/"
+MEDIA_ROOT = ''
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
-MEDIA_URL = ''
+MEDIA_URL = '/media/'
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
@@ -351,6 +351,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.auth.context_processors.auth',
     'django.core.context_processors.i18n',
     'django.core.context_processors.request',
+    'django.core.context_processors.static',
     #'django.core.context_processors.csrf',
 )
 
@@ -430,7 +431,7 @@ AUTHOR_AGENCY_TYPES=["Student","Teacher","TeacherTrainer","Faculty","Researcher"
 # Built-in GAPPS list 
 # DON'T EDIT THIS LIST - for listing purpose on gapps-menubar/gapps-iconbar, instead make use of below one in local_setting file
 # ONLY TO BE EDITED - in case of adding new built-in GAPPS
-GAPPS = [u"Page", u"File", u"Group", u"Image", u"Video", u"Forum", u"Quiz", u"Course", u"Module", u"Batch", u"Task", u"WikiData", u"Browse Topic", u"Browse Resource", u"Meeting",u"Bib_App", u"bioapp"]
+GAPPS = [u"Page", u"File", u"Group", u"Image", u"Video", u"Forum", u"Quiz", u"Course", u"Module", u"Batch", u"Task", u"WikiData", u"Topics", u"E-Library", u"Meeting",u"Bib_App", u"bioapp"]
 
 # This is to be used for listing default GAPPS on gapps-menubar/gapps-iconbar
 # DON'T EDIT this variable here.
@@ -563,3 +564,12 @@ GSTUDIO_RESOURCES_AUDIENCE = [ "Teachers", "Students", "Teacher educators", "Tea
 GSTUDIO_RESOURCES_TEXT_COMPLEXITY = [ "Easy", "Moderately Easy", "Intermediate", "Moderately Hard", "Hard" ]
 
 GSTUDIO_RESOURCES_LANGUAGES = [ "English","Gujarati" ,"Hindi" ,"Manipuri" ,"Marathi" ,"Mizo" ,"Telugu" ]
+
+GSTUDIO_RESOURCES_AGE_RANGE = [ "5-10","11-20", "21-30", "31-40", "41 and above" ] 
+
+GSTUDIO_RESOURCES_TIME_REQUIRED = [ "0-2M","2-5M", "5-15M", "15-45M" ]
+
+GSTUDIO_RESOURCES_AGE_RANGE = [ "5-10","11-20", "21-30", "31-40", "41 and above" ] 
+
+GSTUDIO_RESOURCES_READING_LEVEL = [  ] 
+

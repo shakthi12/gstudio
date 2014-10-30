@@ -6,22 +6,19 @@
 
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   
-  <!-- Scripts required for D3 graph -->
-  <script type="text/javascript" src="/static/ndf/bower_components/d3/d3.min.js"></script> <!-- checked -->
-  <script type="text/javascript" src="/static/ndf/bower_components/underscore/underscore.js"></script> <!-- checked -->
-  <script sync="text/javascript" src="/static/ndf/bower_components/FileSaver/FileSaver.js" ></script> <!-- checked -->
-  
   <!-- Scripts and stylesheets for SideComments -->
-  <script type="text/javascript" src="/static/ndf/bower_components/side-comments/release/side-comments.js"></script>
-  <link rel="stylesheet" type="text/css" href="/static/ndf/bower_components/side-comments/release/side-comments.css">
-  <link rel="stylesheet" type="text/css" href="/static/ndf/bower_components/side-comments/release/themes/default-theme.css">
+  <!-- <script type="text/javascript" src="/static/ndf/bower_components/side-comments/release/side-comments.js"></script> -->
+  <!-- <link rel="stylesheet" type="text/css" href="/static/ndf/bower_components/side-comments/release/side-comments.css"> -->
+  <!-- <link rel="stylesheet" type="text/css" href="/static/ndf/bower_components/side-comments/release/themes/default-theme.css"> -->
 
-  <!-- orgitdown! -->
-  <script type="text/javascript" src="/static/ndf/orgitdown/jquery.orgitdown-foundation.js"></script>
-  <!-- orgitdown! toolbar settings -->
-  <script type="text/javascript" src="/static/ndf/orgitdown/skins/gstudio/set.js"></script>
-  <!-- orgitdown! skin -->
-  <link rel="stylesheet" type="text/css" href="/static/ndf/orgitdown/skins/gstudio/style.css" />
+  {% if user.is_authenticated %}
+    <!-- orgitdown! -->
+    <script type="text/javascript" src="/static/ndf/orgitdown/jquery.orgitdown-foundation.js"></script>
+    <!-- orgitdown! toolbar settings -->
+    <script type="text/javascript" src="/static/ndf/orgitdown/skins/gstudio/set.js"></script>
+    <!-- orgitdown! skin -->
+    <link rel="stylesheet" type="text/css" href="/static/ndf/orgitdown/skins/gstudio/style.css" />
+  {% endif %}
 
 {% endblock %}
 
@@ -138,7 +135,7 @@
     
     padding:10px;
     background-color:#d8f1f3;
-    width:25em;
+    width:27em;
     max-width: 40em;
     margin-left: 48px; 
     margin-top: 10px;
@@ -154,6 +151,7 @@
   }
 
 </style>
+
 
 {% if user.is_authenticated %}
 <!--<a id="toggle-shelf" class="right-off-canvas-toggle right" ><i class='fi-book-bookmark'></i></a> -->
@@ -180,189 +178,57 @@
 
 {% get_schema node as schema %} 
 
-<div itemscope itemtype="{{schema.1.type}}">
-  <header class="row page">
+{% check_user_join request groupid as user_is_joined %}
 
+<div class="row page" itemscope itemtype="{{schema.1.type}}">
+    
     <section class="medium-9 columns" >
       <ul class="breadcrumbs">
         <li><a href="/{{groupid}}">{{groupid}}</a></li>
         <li><a href="#">{% trans "Collection Name " %}</a></li>
       </ul>
 
-      <div class="label-list"> 
-        {% for tag in node.tags %}
-          <a href="{% url 'tag_info' groupid tag %}"><span class="label">{{tag}}</span></a>
-          <span itemprop="{{schema.1.tags}}" content="{{tag}}"></span>
-        {% endfor %}
-
-      </div> 
+       
       
-      <h1>
-        <span itemprop="{{schema.1.name}}" class='node'>{{node.name}}</span> 
-        <!-- Tabs for content and discussion views-->
-        <div class="node-bar">
+      <h1><span itemprop="{{schema.1.name}}" class='node'>{{node.name}}</span>
 
-        <!-- Start of Block: For listing Editing options --> 
-        {% user_access_policy groupid request.user as user_access %}
-        {% edit_policy groupid node request.user as status %}
-        {% if user.is_authenticated and status == "allow" and user_access == "allow" %}
-        {% get_edit_url node.pk as edit_url %}
-
-        {% check_group node as is_group %}
-        {% if is_group %}
-          {% if user.is_superuser or node.created_by == user.id %}
-          <a href="{% url edit_url group_name_tag %}" class="small button split edit"><i class="fi-pencil"></i> {% trans "Edit now" %}<span data-dropdown="edit-options"></span></a>
-          {% endif %}
-
-        {% else %}
-          <a href="{% url edit_url group_name_tag node %}" class="small button split edit"><i class="fi-pencil"></i> {% trans "Edit now" %}<span data-dropdown="edit-options"></span></a>
-        {% endif %}    
-
-        <ul id="edit-options" data-dropdown-content class="f-dropdown">
-
-          <!-- This button publishes the drafted resource -->
-          {% if node %}
-          {% get_publish_policy request groupid node as group_policy %}
-          {% if group_policy == "allow" %}
-            {% if is_group %}
-            {% if user.is_superuser or node.created_by == user.id %}
-            <li>
-              <a href="{% url 'publish_group' group_name_tag node %}">{% trans "Publish" %}</a>
-            </li>
-            {% endif %}
-            
-            {% else %}
-            <li>
-              <a href="{% url 'publish_page' group_name_tag node %}">Publish</a>
-            </li>
-            
-            {% endif %}
-            
-          {% endif %}
-          
-          {% endif %}
-
-          <!-- This button converts collection into module -->
-          {% if node.collection_set and user.is_authenticated %}
-            {% if user_access == "allow" %}
-            <li>
-             <a href="#" id="module">{% trans "Make Module" %}</a>
-            </li>
-            {% endif %}
-          {% endif %}
-
-            
-            <!-- Delete button if page created by user -->
-            {% if node.created_by == request.user.id %}
-      <a class="tiny alert button" href="{% url 'page_delete' group_name_tag node %}">{% trans "Delete" %}</a>
+      {% if node %}
+        {% get_publish_policy request groupid node as group_policy %}
+        {% if group_policy == "allow" %}
+          &nbsp;&nbsp;&nbsp;<span style='position:fixed; color: gray;'>Draft</span>
+        {% endif %}
       {% endif %}
 
-          <!--
-            * This button Adds/Uploads New resource
-            * Displayed 
-              - For Pages and Files
-              - In case of Groups/Author, only to the superuser
-          -->
-          {% get_create_url node.pk as create_url %}
+      </h1>
 
-          {% if is_group %}
-            
-<!-- 
-This section has been integrated to groupdashboard and appears in block app_action_list
-            {% if request.user.is_superuser %}
-            <li>
-              <a href="{% url create_url group_name_tag %}">
-                <span class="fi-plus">&nbsp;&nbsp; New Group</span>
-              </a>
-            </li>
-            {% endif %}
--->
-
-          {% else %}
-            {% if node.member_of_names_list.0 == "File" %}
-            <li>
-              <a href="{% url create_url group_name_tag %}?next={{request.path}}">
-                <span class="fi-upload">&nbsp;&nbsp; {% trans "New" %} {{node.member_of_names_list.0}}</span>
-              </a>
-            </li>
-
-            {% else %}
-              {% if node.member_of_names_list.0 == "Theme" or node.member_of_names_list.0 == "Topic" %}
-              
-                <li>
-                  <a href="{% url create_url group_name_tag app_id %}">
-                    <span class="fi-plus">&nbsp;&nbsp; {% trans "New" %} {{node.member_of_names_list.0}}</span>
-                  </a>
-                </li>
-              {% else %}
-                <li>
-                  <a href="{% url create_url group_name_tag %}">
-                    <span class="fi-plus">&nbsp;&nbsp; {% trans "New" %} {{node.member_of_names_list.0}}</span>
-                  </a>
-                </li>
-              {% endif %}
-
-            {% endif %}
-
-          {% endif %}
-
-        </ul>
-
-      {% endif %}
-      <!-- End of Block: For listing Editing options -->
-            
-          
-            </div>
-  </h1>
       <h1 class="subheader">
       <dl class="tabs" data-tab data-options="deep_linking:true"> 
 
-      <dd class="active"><a href="#view-page"><i class="fi-eye"></i> {% trans "View" %}</a></dd>
-      <dd><a href="#view-changes"><i class="fi-clock"></i> {% trans "Changes" %}</a></dd>
-      <dd><a href="#view-discussion"><i class="fi-comment"></i> {% trans "Discuss" %}</a></dd>
+      <dd class="active page-view"><a class="view-page"><i class="fi-eye"></i> {% trans "View" %}</a></dd>
+      <!-- calling ndf tags for discussion replies -->
+      {% get_disc_replies node.pk group_id global_disc_all_replies as all_replies %}
+
+      <dd class="discussion-view"><a class="view-discussion"><i class="fi-comment"></i>
+        
+          {% if all_replies %}
+            <span title="{{ all_replies | length }} &nbsp;{% trans 'Comments' %}">
+              {% trans "Join Discussion" %} ({{ all_replies | length }})
+            </span>
+          {% else %}
+            <span title="{% trans 'Be the first to start a discussion' %}">
+              {% trans "Begin Discussion" %}
+            </span>
+          {% endif %}
+
+        </a>
+      </dd>
 
     </dl>
   </h1>
 
-</section>
+  <!-- new  -->
 
-<div class="medium-3 columns"> 
-
-  <!-- Modal links for associated views like graphs and map-->
-  <ul class="side-nav">
-    <li><a data-reveal-id="view-map-widget"><i class="fi-marker"></i> {% trans "Location" %}</a></li>
-
-    <li><a href="#" data-dropdown="graph-list" data-options="is_hover:true;align:left"><i class="fi-share"></i> {% trans "Graphs" %}</a>
-    </li>
-
-    <ul id="graph-list" class="f-dropdown" data-dropdown-content>
-      <li><a href="#view-concept-graph" data-reveal-id="view-concept-graph" id="clickConceptGraph">{% trans "Concept Graph" %}</a></li>
-
-      {% if node.collection_set %}
-      <li><a href="#view-collection-graph" data-reveal-id="view-collection-graph">{% trans "Collection Graph" %}</a></li>
-      {% endif %}
-
-      {% if node.prior_node %}
-      <li><a href="#view-dependency-graph" data-reveal-id="view-dependency-graph">{% trans "Dependency Graph" %}</a></li>
-      {% endif %}               
-    </ul>
-
-    <!-- 
-    <li>
-      <a id = "toggleContainer"  href="#" onClick="toggle(this);">
-        <i class="fi-comments annotateIcon"></i> {% trans "Annotate" %}
-      </a>
-    </li> 
-    --> 
-  
-  </ul>
-
-  </div>
-</header>
-
-
-
-{% if schema.0 %}
+  {% if schema.0 %}
 <meta itemprop="{{schema.1.DC}}" content="{{node.created_at}}">
 <meta itemprop="{{schema.1.DM}}" content="{{node.last_update}}" >
 <meta itemprop="{{schema.1.creator}}" content="{{node.user_details_dict.created_by}}">
@@ -373,218 +239,218 @@ This section has been integrated to groupdashboard and appears in block app_acti
 {% for contributor_name in node.user_details.contributors %}
 <meta itemprop="{{schema.1.contributor}}" content="{{contributor_name}}">
 {% endfor %}                                                             
-{% if node|is_File %}     		
-<meta  itemprop="{{schema.1.size}}" content="{{node.file_size.size}} " > 	
-<meta  itemprop="{{schema.1.format}}" content="{{node.mime_type}}" >     	
-{% endif %}                     					  
-{% endif %} 	
+{% if node|is_File %}         
+<meta  itemprop="{{schema.1.size}}" content="{{node.file_size.size}} " >  
+<meta  itemprop="{{schema.1.format}}" content="{{node.mime_type}}" >      
+{% endif %}                                 
+{% endif %}   
 
-{% for neighbour in node.teaches %} 																
+{% for neighbour in node.teaches %}                                 
 <div itemprop="{{schema.1.educationalalignment}}" itemscope itemtype="alignmentObject">
-	<meta itemprop="{{schema.1.educationalframework}}" content="">
-	<meta itemprop="{{schema.1.alignmenttype}}" content="teaches">	
-	<meta itemprop="{{schema.1.targeturl}}" content="{{neighbour.url}}"> 
-	<meta itemprop ="{{schema.1.targetname}}" content ="{{neighbour.name}}">
-	<meta itemprop ="{{Schema.1.targetdescription}}" content ="{{neighbour.html_content}}"> 
+  <meta itemprop="{{schema.1.educationalframework}}" content="">
+  <meta itemprop="{{schema.1.alignmenttype}}" content="teaches">  
+  <meta itemprop="{{schema.1.targeturl}}" content="{{neighbour.url}}"> 
+  <meta itemprop ="{{schema.1.targetname}}" content ="{{neighbour.name}}">
+  <meta itemprop ="{{Schema.1.targetdescription}}" content ="{{neighbour.html_content}}"> 
 </div>
 {% endfor %}
 
-{% for neighbour in node.assesses %} 																
+{% for neighbour in node.assesses %}                                
 <div itemprop="{{schema.1.educationalalignment}}" itemscope itemtype="alignmentObject">
-	<meta itemprop="{{schema.1.educationalframework}}" content="">
-	<meta itemprop="{{schema.1.alignmenttype}}" content="assesses">	
-	<meta itemprop="{{schema.1.targeturl}}" content="{{neighbour.url}}"> 
-	<meta itemprop ="{{schema.1.targetname}}" content ="{{neighbour.name}}">
-	<meta itemprop ="{{schema.1.targetdescription}}" content ="{{neighbour.html_content}}"> 
+  <meta itemprop="{{schema.1.educationalframework}}" content="">
+  <meta itemprop="{{schema.1.alignmenttype}}" content="assesses"> 
+  <meta itemprop="{{schema.1.targeturl}}" content="{{neighbour.url}}"> 
+  <meta itemprop ="{{schema.1.targetname}}" content ="{{neighbour.name}}">
+  <meta itemprop ="{{schema.1.targetdescription}}" content ="{{neighbour.html_content}}"> 
 </div>
 {% endfor %}
 
 <div class="row">
-	
-  <section class="medium-9 columns content">
-
+  
+  <section class="medium-12 columns content">
     <div class="tabs-content">
-
       <!-- Tab content -->
       <div class="content active commentable-section" id="view-page" data-section-id="1">
-	<div class="row">
-	<div class="small-4 columns">
-        {% if node.prior_node|length > 0 %}
-        <div class="panel">
-          <h6>{% trans "You may want to read these first: " %}</h6>
-          {% for index_key, each_node in node.prior_node_dict.items %}
-          {% get_grid_fs_object each_node as grid_fs_obj %}
-          {% if each_node.mime_type %}
-          <a href="{% url 'read_file' group_name_tag each_node.pk  grid_fs_obj.filename %}">{{ each_node.name }}</a>,&nbsp;
-          {% else %}
-          <a href="{% url 'page_details' group_name_tag each_node.pk %}">{{ each_node.name }}</a>,&nbsp;
-          {% endif %}
-          {% endfor %}
+        <div class="row">
+          <div class="small-4 columns">
+            {% if node.prior_node|length > 0 %}
+            <div class="panel">
+
+              <h6>{% trans "You may want to read these first: " %}</h6>
+              {% for index_key, each_node in node.prior_node_dict.items %}
+              {% get_grid_fs_object each_node as grid_fs_obj %}
+              {% if each_node.mime_type %}
+              <a href="{% url 'read_file' group_name_tag each_node.pk  grid_fs_obj.filename %}">{{ each_node.name }}</a>,&nbsp;
+              {% else %}
+              <a href="{% url 'page_details' group_name_tag each_node.pk %}">{{ each_node.name }}</a>,&nbsp;
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="small-4 columns">
+            {% if node.teaches %}
+            <div class="panel">
+              <h6>This resource teaches you: </h6>
+              {% for  each_node in node.teaches %}
+              {% get_grid_fs_object each_node as grid_fs_obj %}
+              {% if each_node.mime_type %}
+              <a href="{% url 'read_file' group_name_tag each_node.pk  grid_fs_obj.filename %}">{{ each_node.name }}</a>,&nbsp;
+              {% else %}
+              <a href="{% url 'topic_details' group_name_tag each_node.pk %}">{{ each_node.name }}</a>
+              {% if not forloop.last %},&nbsp; {% endif %}
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="small-4 columns">
+            {% if node.assesses %}
+            <div class="panel">
+              <h6>This resource assesses these</h6>
+              {% for  each_node in node.assesses %}
+              {% get_grid_fs_object each_node as grid_fs_obj %}
+              {% if each_node.mime_type %}
+              <a href="{% url 'read_file' group_name_tag each_node.pk  grid_fs_obj.filename %}">{{ each_node.name }}</a>,&nbsp;
+              {% else %}
+              <a href="{% url 'page_details' group_name_tag each_node.pk %}">{{ each_node.name }}</a>,&nbsp;
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
         </div>
-        {% endif %}
-	</div>
-	<div class="small-4 columns">
-	{% if node.teaches %}
-	<div class="panel">
-		<h6>This resource teaches you: </h6>
-		
-	 {% for  each_node in node.teaches %}
-	 {% get_grid_fs_object each_node as grid_fs_obj %}
-          {% if each_node.mime_type %}
-          <a href="{% url 'read_file' group_name_tag each_node.pk  grid_fs_obj.filename %}">{{ each_node.name }}</a>,&nbsp;
-          {% else %}
-          <a href="{% url 'topic_details' group_name_tag each_node.pk %}">{{ each_node.name }}</a>
-          {% if not forloop.last %},&nbsp; {% endif %}
-          {% endif %}
-          {% endfor %}
-	</div>
-	{% endif %}
-	</div>
-	<div class="small-4 columns">
-	{% if node.assesses %}
-	<div class="panel">
-		<h6>This resource assesses these</h6>
-	 {% for  each_node in node.assesses %}
-	 {% get_grid_fs_object each_node as grid_fs_obj %}
-          {% if each_node.mime_type %}
-          <a href="{% url 'read_file' group_name_tag each_node.pk  grid_fs_obj.filename %}">{{ each_node.name }}</a>,&nbsp;
-          {% else %}
-          <a href="{% url 'page_details' group_name_tag each_node.pk %}">{{ each_node.name }}</a>,&nbsp;
-          {% endif %}
-          {% endfor %}
-	</div>
-	{% endif %}
-	</div>
-	</div>
-	
+  
         <!-- Code for showing media details -->
         {% if node.mime_type %}
 
           {% get_grid_fs_object node as grid_fs_obj %}
 
           {% if 'Pandora_video' in node.member_of_names_list %}
-            <div>
-              <video width="480px" poster="http://wetube.gnowledge.org/{{video_obj}}/icon128.jpg" controls>
-                  <source src="http://wetube.gnowledge.org/{{video_obj}}/480p.webm" type="video/webm"> 
-                  {% trans "Your browser does not support the video tag." %}
-              </video><br/><br/>
+          <div>
+            {% get_source_id node.pk as source_id %}
+            <video width="480px" poster="http://wetube.gnowledge.org/{{source_id}}/icon128.jpg" controls>
+              <source src="http://wetube.gnowledge.org/{{source_id}}/480p.webm" type="video/webm"> 
+              {% trans "Your browser does not support the video tag." %}
+            </video><br/><br/>
 
-              {% get_pandoravideo_metadata video_obj as metadata %}
-              {% for k,v in metadata.items %} 
-                    {% if k != "cuts" %}
-                      <h3>{{k}} : {{v}}<h3>
-                      <br/>
-                    {% endif %}
-              {% endfor %}
-              {% if user.is_authenticated %}
+            {% get_pandoravideo_metadata video_obj as metadata %}
+            {% for k,v in metadata.items %} 
+              {% if k != "cuts" %}
+                <h3>{{k}} : {{v}}<h3>
                 <br/>
-                <br/>
-                <a class="button tiny secondary" href="http://wetube.gnowledge.org/{{video_obj}}/480p.webm" download="480.webm">
-                  <span class="fi-download large"> {% trans "Download " %} </span>
-                </a>
               {% endif %}
-            </div>
+            {% endfor %}
+
+            {% if user.is_authenticated %}
+              <br/>
+              <br/>
+              <a class="button tiny secondary" href="http://wetube.gnowledge.org/{{video_obj}}/480p.webm" download="480.webm">
+                <span class="fi-download large"> {% trans "Download " %} </span>
+              </a>
+            {% endif %}
+          </div>
 
           {% elif 'video' in node.mime_type %}
-            <div>
-              <video width="640px" controls buffered>
-                <source src="{% url 'getFullvideo' group_name_tag node %}" type="video/webm">
-                <source src="{% url 'getFullvideo' group_name_tag node %}" type="video/ogg">    
-                {% trans "Your browser does not support the video tag." %}
-              </video>
+          <div>
+            <video width="640px" controls buffered>
+              <source src="{% url 'getFullvideo' group_name_tag node %}" type="video/webm">
+              <source src="{% url 'getFullvideo' group_name_tag node %}" type="video/ogg">    
+              {% trans "Your browser does not support the video tag." %}
+            </video>
 
-              {% if user.is_authenticated %}
+            {% if user.is_authenticated %}
               <br/>
               <br/>
               <a class="button small secondary" href="{% url 'getFullvideo' group_name_tag node %}" download="{{ grid_fs_obj.filename }}">
                 <span class="fi-download large"> {% trans "Download " %} </span>
               </a>
-              {% endif %}
-            </div>
+            {% endif %}
+          </div>
 
           {% else %}    
-            
             <div>
               {% if 'image' in node.mime_type %}
-              Resource Type: {{node.mime_type}}
+                Resource Type: {{node.mime_type}}
 
-              <!-- lightbox for displaying image gallary -->
-              <ul class="clearing-thumbs clearing-feature small-block-grid-2" data-clearing> 
-                {% for image in imageCollection %}
-
-                  {% get_grid_fs_object image as grid_fs_obj %}
-                  {% if node.pk == image.pk %}
+                <!-- lightbox for displaying image gallary -->
+                <ul class="clearing-thumbs clearing-feature small-block-grid-2" data-clearing> 
+                  {% for image in imageCollection %}
+                    {% get_grid_fs_object image as grid_fs_obj %}
+                    {% if node.pk == image.pk %}
                     <li class="clearing-featured-img">
-                  {% else %}
+                    {% else %}
                     <li>
-                  {% endif %}
-                  
-                  <a href="{% url 'getFullImage' group_name_tag image grid_fs_obj.filename %}">
-                    <img class="imgLightbox" src="{% url 'getFullImage' group_name_tag image grid_fs_obj.filename %}" data-caption="{{image.name}}" name="{{image.pk}}">
-                  </a>
-                  </li> 
-
-                {% endfor %}
-              </ul>
-              <!--  -->
+                    {% endif %}
+                      <a href="{% url 'getFullImage' group_name_tag image grid_fs_obj.filename %}">
+                        <img class="imgLightbox" src="{% url 'getFullImage' group_name_tag image grid_fs_obj.filename %}" data-caption="{{image.name}}" name="{{image.pk}}">
+                      </a>
+                    </li> 
+                  {% endfor %}
+                </ul>
+                <!--  -->
               
               {% elif 'audio' in node.mime_type %}
-              <div class="row">
-                <div class="small-12 columns">
-                  <audio src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" controls loop>
-                    <p>Your browser does not support the audio element </p>
-                  </audio>
+                <div class="row">
+                  <div class="small-12 columns">
+                    <audio src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" controls loop>
+                      <p>Your browser does not support the audio element </p>
+                    </audio>
+                  </div>
                 </div>
-              </div>
-              Resource Type: {{node.mime_type}}
-              <br/>
+                Resource Type: {{node.mime_type}}
+                <br/>
                 <a target="_" href="{% url 'getFullImage' group_name_tag node grid_fs_obj.filename %}">
-                {{ grid_fs_obj.filename }}
-              </a>
+                  {{ grid_fs_obj.filename }}
+                </a>
+              
               {% elif 'html' in node.mime_type %}
-              <!-- <div class="row"> -->
-                <!-- <div class="small-12 columns"> -->
-                  <iframe id="html-res-iframe" width="100%" seamless="seamless" src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}">
-                    <p>Your browser does not support the audio element </p>
-                  </iframe>
+                <!-- <div class="row"> -->
+                  <!-- <div class="small-12 columns"> -->
+                    <iframe id="html-res-iframe" width="100%" seamless="seamless" src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}">
+                      <p>Your browser does not support the audio element </p>
+                    </iframe>
+                  <!-- </div> -->
                 <!-- </div> -->
-              <!-- </div> -->
-              Resource Type: {{node.mime_type}}
-              <br/>
+                Resource Type: {{node.mime_type}}
+                <br/>
                 <a target="_" href="{% url 'getFullImage' group_name_tag node grid_fs_obj.filename %}">
-                {{ grid_fs_obj.filename }}
-              </a>
+                  {{ grid_fs_obj.filename }}
+                </a>
 
               {% comment %}
-              {% elif 'pdf' in node.mime_type %}
-              <div class="row">
-                <div class="small-12 columns">
-                  <!-- <object type="application/pdf" width="400" height="500" data="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}">
-                    alt: <p>Your browser does not support the audio element </p>
-                  </object> -->
-                  <!-- <embed src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" width="600" height="500" alt="pdf" pluginspage="http://www.adobe.com/products/acrobat/readstep2.html"> -->
-                  <!-- <iframe src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" width="500" height="500"></iframe> -->
+                {% elif 'pdf' in node.mime_type %}
+                <div class="row">
+                  <div class="small-12 columns">
+                    <!-- <object type="application/pdf" width="400" height="500" data="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}">
+                      alt: <p>Your browser does not support the audio element </p>
+                    </object> -->
+                    <!-- <embed src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" width="600" height="500" alt="pdf" pluginspage="http://www.adobe.com/products/acrobat/readstep2.html"> -->
+                    <!-- <iframe src="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" width="500" height="500"></iframe> -->
+                  </div>
                 </div>
-              </div>
-              Resource Type: {{node.mime_type}}
-              <br/>
-                <a target="_" href="{% url 'getFullImage' group_name_tag node grid_fs_obj.filename %}">
-                {{ grid_fs_obj.filename }}
-              </a>
+                Resource Type: {{node.mime_type}}
+                <br/>
+                  <a target="_" href="{% url 'getFullImage' group_name_tag node grid_fs_obj.filename %}">
+                  {{ grid_fs_obj.filename }}
+                </a>
               {% endcomment %}
               
               {% else %}
                 <a href="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}">
                   {{ grid_fs_obj.filename }}
                 </a>
+
               {% endif %}
 
               {% if user.is_authenticated %}
-              <br/>
-              <br/>
-              <a class="button small secondary" href="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" download="{{ grid_fs_obj.filename }}">
-                <span class="fi-download large"> {% trans "Download " %} </span>
-              </a>
+                <br/>
+                <br/>
+                <a class="button small secondary" href="{% url 'read_file' group_name_tag node grid_fs_obj.filename %}" download="{{ grid_fs_obj.filename }}">
+                  <span class="fi-download large"> {% trans "Download " %} </span>
+                </a>
               {% endif %}
             </div>
     
@@ -595,9 +461,9 @@ This section has been integrated to groupdashboard and appears in block app_acti
         {% block add_fields %} {% endblock %}
 
         <ul class="inline-list">
-        {% if user.is_authenticated %}
-        {% block add_list %}{% endblock %}
-        {% endif %}
+          {% if user.is_authenticated %}
+          {% block add_list %}{% endblock %}
+          {% endif %}
         </ul>
 
         {% for tab_name, tab_fields_list in property_order_list %}
@@ -625,213 +491,104 @@ This section has been integrated to groupdashboard and appears in block app_acti
           <br>
           {% endfor %}
         {% endfor %}
-      <!-- <div id="commentable-area"> -->
-      <div>
-        {% with node.html_content|safe as description %}
-        {% if description != "None" %}
-      	<span itemprop="{{schema.1.description}}">{{ description }}</span>
-        {% endif %}
-        {% endwith %}
-      </div>
-      <!-- </div> -->
-      <!-- Resource contents of topic -->
-
-      {% if topic %}
-        <!-- <div class="content" id="view-graph">  </div> -->
-
-        <div class="content" id="contents"> 
-          
-          {% get_contents node.pk as contents %}
-          {% for k,v in contents.items %}    
-
-            <fieldset id="{{k}}">
-              <legend>{{k}}</legend>
-
-              {% for e in v %}
-                {% if k == "Images" %}
-                    <a href ="{% url 'image_detail' group_name_tag e.1 %}" style="display: inline-block">
-                      <img src="{% url 'getFileThumbnail' group_name_tag e.1 %}" />  
-                      <br/><div>{{e.0}}</div>
-                    </a>&nbsp;&nbsp;&nbsp;&nbsp;
-
-                {% elif k == "Videos" %}
-                    <a href ="{% url 'video_detail' group_name_tag e.1 %}" style="display: inline-block">
-                      <img src="{% url 'getFileThumbnail' group_name_tag e.1 %}">
-                      <br/><div>{{e.0}}</div>
-                    </a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-
-                {% else %}
-                    <a href ="{% url 'file_detail' group_name_tag e.1 %}"> {{e.0}} </a>&nbsp;&nbsp;&nbsp;
-                {% endif %}
-                
-              {% endfor %}
-            </fieldset>
-
-          {% endfor %}          
-
-        </div>
-      {% endif %}
-      <!-- End of displaying topic page contents -->
-
-      </div>
-
-
-      <!-- Content for Concept Graph -->
-      <div class="content reveal-modal graph-div" id="view-concept-graph" data-reveal>
-        <a class="close-reveal-modal" id="closeviewconceptgraph">&#215;</a>
-        {% include "ndf/graph_concept.html" %}
-      </div>
       
-      <!-- Content for Collection Graph -->
-      {% if node.collection_set %}
-        <div class="content reveal-modal graph-div" id="view-collection-graph" data-reveal>    
-        	<a class="close-reveal-modal">&#215;</a>
-        	{% include "ndf/graph_collection.html" %}
+        <!-- <div id="commentable-area"> -->
+        <div>
+          {% with node.html_content|safe as description %}
+          {% if description != "None" %}
+          <span itemprop="{{schema.1.description}}">{{ description }}</span>
+          {% endif %}
+          {% endwith %}
         </div>
-      {% endif %}
+        <!-- </div> -->
+        <!-- Resource contents of topic -->
 
-      <!-- Content for dependency Graph -->
-      {% if node.prior_node %}
-        <div class="content reveal-modal graph-div" id="view-dependency-graph" data-reveal>    
-         <a class="close-reveal-modal">&#215;</a>
-         {% include "ndf/graph_dependency.html" %}
-        </div>
-      {% endif %}
-     
-     <!-- Tab View Map Widget -->
-     <div class="content reveal-modal graph-div" id="view-map-widget" data-reveal>
-       <!-- #{#%# if '/details/' in request.path  or '/image_detail/' in request.path  or '/video_detail/' in request.path%} -->
-       <a class="close-reveal-modal" >&#215;</a>
-       {% include "ndf/map_widget.html" with mode="read" %}
-       <!-- <div style="background-color:gray; width:100%; height:80%;"></div> -->
-       <!-- #{#%# endif %} -->
-     </div>
+        {% if topic %}
+          <!-- <div class="content" id="view-graph">  </div> -->
 
-
-          <!-- View node change history area -->
-    <div id="view-changes" class="content">
-        
-        <p>
-        {{ node.member_of_names_list.0 }} 
-        Edited {{ node.last_update|timesince }} ago by <a class="user" href="{% url 'dashboard' node.modified_by %}">{{node.user_details_dict.modified_by}}</a>
-            </p>
-        
-          <h4>{% trans "Recent changes" %}:</h4>
-        <ul class="side-nav">
-        {% for seq_no, version_no in node.version_dict.items|slice:"-20:" reversed %}
-          <li title="Version #{{version_no}}">
-            {% if forloop.last and forloop.counter > 5 %}
-            <a href="{% url 'node_version' group_name_tag node.pk version_no %}" style="padding-left:5px;">All Changes</a>
+          <div class="content" id="contents"> 
             
-            {% else %}
-            <a href="{% url 'node_version' group_name_tag node.pk version_no %}" style="padding-left:5px;">{{version_no}}</a>
+            {% get_contents node.pk as contents %}
+            {% for k,v in contents.items %}    
 
-            {% endif %}
-          </li> 
-          {% endfor %}
-        </ul>
-          
-      
+              <fieldset id="{{k}}">
+                <legend>{{k}}</legend>
 
-        
-        </div>
-        
-        
-    <!-- discussion content area -->
-    <div id="view-discussion" class="content">
-    {% get_disc_replies node.pk group_id global_disc_all_replies as all_replies %}
+                {% for e in v %}
+                  {% if k == "Images" %}
+                      <a href ="{% url 'image_detail' group_name_tag e.1 %}" style="display: inline-block">
+                        <img src="{% url 'getFileThumbnail' group_name_tag e.1 %}" />  
+                        <br/><div>{{e.0}}</div>
+                      </a>&nbsp;&nbsp;&nbsp;&nbsp;
 
-      <br/>
-      <div onclick="createDiscussion()" id="create-discussion" data-id="{{ node.pk }}" class="button" style="margin-bottom:0;">
-      {% if all_replies %}
-        Initiate New Discussion Thread
-      {% else %}
-        Initiate discussion on {{ node.name }}
-      {% endif %}
-       </div>
+                  {% elif k == "Videos" %}
+                      <a href ="{% url 'video_detail' group_name_tag e.1 %}" style="display: inline-block">
+                        <img src="{% url 'getFileThumbnail' group_name_tag e.1 %}">
+                        <br/><div>{{e.0}}</div>
+                      </a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 
-      <div id="replies-area">
-        
-        <!-- populating replies -->
-        {% for each_reply in all_replies %}
+                  {% else %}
+                      <a href ="{% url 'file_detail' group_name_tag e.1 %}"> {{e.0}} </a>&nbsp;&nbsp;&nbsp;
+                  {% endif %}
+                  
+                {% endfor %}
+              </fieldset>
 
-          <div style="margin-left:calc({{each_reply.level}} * 48px); {% if each_reply.level == 1 %}margin-top:25px;{% endif %}" class="disc-replies" data-priornode-id="{{ each_reply.prior_node }}">
-            
-            <div class="row"> 
-              <div class="small-3 columns">
-                <a class="text-center" href="/home/{{each_reply.userid}}/dashboard">
-                  <span class="align-center"><i class="fi-torso"></i></span>
-                  <label>{{ each_reply.username }}</label>
-                </a>
-              </div>
-              <div class="small-9 columns">
-                {% spaceless %}
-                  {{each_reply.HTMLcontent | safe }}
-                {% endspaceless %}
-              </div>
-            </div>
-            
-            <div class="row">
-              <div class="small-9 columns"> <small>{{ each_reply.last_update }}</small> </div>
-              <div class='reply-btn text-right small-3 columns' data-id='{{ each_reply.oid }}' onclick='openOrgEditor($(this))' data-org-content='{{ each_reply.ORGcontent }}'>
-                reply
-              </div>
-            </div>
+            {% endfor %}          
 
           </div>
+        {% endif %}
+        <!-- End of displaying topic page contents -->
+      </div>
 
-        {% endfor %}
-        <!-- END of populating replies -->
+      {% if "Topic" in node.member_of_names_list or "Concept" in node.member_of_names_list %}
+        <!-- Below code/widgets will only be shown for all resource instances/documents
+             which are neither Topic nor Concept
+        -->
+
+        <!-- Content for Concept Graph -->
+        <div class="content reveal-modal graph-div" id="view-concept-graph" data-reveal>
+          <a class="close-reveal-modal" id="closeviewconceptgraph">&#215;</a>
+          {% include "ndf/graph_concept.html" %}
+        </div>
         
+        <!-- Content for Collection Graph -->
+        {% if node.collection_set %}
+          <div class="content reveal-modal graph-div" id="view-collection-graph" data-reveal>    
+            <a class="close-reveal-modal">&#215;</a>
+            {% include "ndf/graph_collection.html" %}
+          </div>
+        {% endif %}
+
+        <!-- Content for dependency Graph -->
+        {% if node.prior_node %}
+          <div class="content reveal-modal graph-div" id="view-dependency-graph" data-reveal>    
+           <a class="close-reveal-modal">&#215;</a>
+           {% include "ndf/graph_dependency.html" %}
+          </div>
+        {% endif %}
+       
+        <!-- Tab View Map Widget -->
+        <div class="content reveal-modal graph-div" id="view-map-widget" data-reveal>
+          <!-- #{#%# if '/details/' in request.path  or '/image_detail/' in request.path  or '/video_detail/' in request.path%} -->
+          <a class="close-reveal-modal" >&#215;</a>
+          {% include "ndf/map_widget.html" with mode="read" %}
+          <!-- <div style="background-color:gray; width:100%; height:80%;"></div> -->
+          <!-- #{#%# endif %} -->
+        </div>
+        
+      {% endif %}
+      
+
+      <div id="view-discussion" style="display:none;">
+      <!-- discussion content area -->
+        {% include 'ndf/discussion.html' %}
+      <!-- END of discussion content area -->     
       </div>
-
-      <!-- orgitdown container   -->
-      <div id="org" style="" class="reveal-modal small" data-reveal>
-        <!-- Reply : -->
-
-        <textarea id="orgitdownreps" name="content_org" placeholder="Enter your reply text here."></textarea>
-
-        <input data-id="{{ node.pk }}" type="button" value="Post"  class="button expand reply-button" onclick="addReply($(this))">
-
-        <input type="hidden" id="prior-node" style="visibility:hidden" value="">
-        <!-- <input type="hidden" id="thd" style="visibility:hidden" value=""> -->
-
-      </div>
-      <!-- end of orgit down container -->
-
-    </div>
-    <!-- END of discussion content area -->     
 
     </div><!-- end of tab's content -->
   </section>
-
-  <section class="medium-3 columns">
-    
-      <div>
-      {% include "ndf/rating.html" %} 
-      </div>
-    <div>
-        
-     
-      <ul class="side-nav">
-          <li>{% trans "In other languages" %}</li>
-      {% get_possible_translations node as tran %}
-     {% for each in tran %}
-        {% for k,v in each.items %}
-        <li><a href="{% url 'page_details' groupid k %}">{{v}}</a></li>
-        {% endfor %}
-      {% endfor %}
-          
-          <!-- This button translates given resource -->
-          <li>
-            <a href="{% url 'node_translation' group_name_tag node %} ">{% trans "Translate" %}</a>
-          </li>
-          
-          </ul>
-
-    </div>
-  </section>
-
+  
 </div>
 
 <footer>
@@ -841,210 +598,265 @@ This section has been integrated to groupdashboard and appears in block app_acti
   </small></p>
 </footer>
       
-</div> <!-- schema ends here -->
+<!-- schema ends here -->
+
+
+  <!-- end new -->
+
+</section>
+
+
+
+<section class="medium-3 columns"> 
+
+  <!-- Modal links for associated views like graphs and map-->
+  <ul class="side-nav">
+    <div class="panel" style="background-color:#ddd;">
+
+      {% user_access_policy groupid request.user as user_access %} 
+      
+      {% if user.is_authenticated %}
+      <b>{% trans "Actions" %}</b><br/>
+      <div class="row">         
+        <div class="medium-6 columns">
+          
+          {% edit_policy groupid node request.user as status %}
+          {% if user.is_authenticated and status == "allow" and user_access == "allow" %}
+            {% get_edit_url node.pk as edit_url %}
+
+            {% check_group node as is_group %}
+            {% if is_group %}
+              {% if user.is_superuser or node.created_by == user.id %}
+              <a href="{% url edit_url group_name_tag %}" class="tiny round button edit"><i class="fi-pencil"></i> {% trans "Edit" %}</a>
+              {% endif %}
+
+            {% else %}
+              {% if user_is_joined == "joined" or user_is_joined == "author" %}
+                <a href="{% url edit_url group_name_tag node %}" class="tiny round button edit"><i class="fi-pencil"></i> {% trans "Edit" %}</a>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        </div>
+        <div class="medium-6 columns">
+
+          <!-- This button publishes the drafted resource -->
+          {% if node %}
+            {% get_publish_policy request groupid node as group_policy %}
+            {% if group_policy == "allow" %}
+
+              {% if is_group %}
+                {% if user.is_superuser or node.created_by == user.id %}
+                  <a href="{% url 'publish_group' group_name_tag node %}" class="tiny round button edit">{% trans "Publish" %}</a>
+                {% endif %}
+              {% else %}
+                <a href="{% url 'publish_page' group_name_tag node %}" class="tiny round button edit">{% trans "Publish" %}</a><br/>
+              {% endif %}
+            
+            {% else %}
+              <a class="tiny round button edit" style="background-color:gray;" disabled>{% trans "Published" %}</a>
+            {% endif %}
+          {% endif %}
+
+        </div>
+        
+        <br/><br/>
+        <div class="medium-5 columns">
+        <!-- Delete button if page created by user -->
+          {% if node.created_by == request.user.id %}
+            {% if node.member_of_names_list.0 == "Page" %}
+              <a class="tiny alert round button" href="{% url 'page_delete' group_name_tag node %}">{% trans "Delete" %}</a>
+            {% elif node.member_of_names_list.0 == "Term" %}
+              <a class="tiny alert round button" href="{% url 'term_delete' group_name_tag node %}">{% trans "Delete" %}</a>
+            {% endif %}
+          {% endif %}
+        </div>
+        <div class="medium-7 columns">
+          {% get_create_url node.pk as create_url %}
+          {% if is_group %}
+            
+            {% if user_access == "allow" %}
+              {% if request.user.is_superuser %}
+              <li>
+                <a href="{% url create_url group_name_tag %}" class="tiny round button">
+                  <span class="fi-plus">&nbsp;&nbsp; New Group</span>
+                </a>
+              </li>
+
+              {% endif %}
+            {% endif %}
+            
+
+          {% else %}
+            
+            {% if user_is_joined == "joined" or  user_is_joined == "author" %}
+
+              {% if node.member_of_names_list.0 == "File" %}
+                <a href="{% url create_url group_name_tag %}?next={{request.path}}" class="tiny round button">
+                  <span class="fi-upload">&nbsp;&nbsp; {% trans "New" %} {{node.member_of_names_list.0}}</span>
+                </a>
+
+              {% else %}
+                {% if node.member_of_names_list.0 == "Theme" or node.member_of_names_list.0 == "Topic" %}
+                  <a href="{% url create_url group_name_tag app_id %}" class="tiny round button">
+                    <span class="fi-plus">&nbsp;&nbsp; {% trans "New" %} {{node.member_of_names_list.0}}</span>
+                  </a>
+                {% elif node.member_of_names_list.0 == "Term" %}
+                  <a href="{% url create_url group_name_tag %}" class="tiny round button">
+                    <span class="fi-plus">&nbsp;&nbsp; {% trans "New" %} Topic</span>
+                  </a>
+                {% else %}
+                  <a href="{% url create_url group_name_tag %}" class="tiny round button">
+                    <span class="fi-plus">&nbsp;&nbsp; {% trans "New" %} {{node.member_of_names_list.0}}</span>
+                  </a>
+                {% endif %}
+
+              {% endif %}
+            {% endif %}
+          {% endif %}
+
+        </div>
+
+        
+
+        {% if node %}
+          {% check_group node as is_group %}
+          {% if is_group %}
+
+            {% get_group_policy node request.user as policy %}
+            {% get_prior_post_node group_id as groupname %}
+
+            <input type="hidden" id="groupname" value="{{node}}">
+            {% if user.is_authenticated %}
+              {% if user_access == "allow" %}
+               {% if user.is_superuser or node.created_by == user.id %}
+                   <li><a href="{% url 'create_sub_group' group_id %}" class="tiny round button">create subgroup</a></li>
+               {% endif %}
+              {% endif %}
+            {% if user_is_joined == "joined" %}
+              {% if is_user_group and node.created_by != request.user %}
+              <li><input class="tiny round button" type="submit" id="notify" value="Stop following"> </li>
+
+              {% else %}
+              <li><input class="tiny round button" type="submit" id="notify" value="Unsubscribe"></li>
+              {% endif %} 
+
+            {% elif user_is_joined == "not" or not user.is_authenticated %}
+              {% if is_user_group and node.created_by != request.user %}
+              <li><input class="tiny round button" type="submit" id="notify" value="Follow"></li>
+
+              {% else %}
+              <li><input class="tiny round button" type="submit" id="notify" value="Join"></li>
+              {% endif %}
+
+            {% endif %}
+
+            {% endif %}
+
+            <!-- Triggers the modals -->
+            <li><a href="#" id ="btn_list_member" data-reveal-id="firstModal">{% trans "List Members" %}</a></li>
+
+            <!-- Reveal Modals begin -->
+            <div id="firstModal" class="reveal-modal" data-reveal></div>
+
+            {% check_is_gstaff groupid request.user as is_gstaff %}
+            {% if is_gstaff %}
+              {% include "ndf/invite_users.html" %}
+
+              {% include "ndf/invite_admins.html" %}
+            {% endif %} 
+          {% endif %}
+        {% endif %}
+
+      </div>      
+      {% endif %}
+
+      <!-- This button converts collection into module -->
+      {% comment %}
+      {% if node.collection_set and user.is_authenticated %}
+        {% if user_access == "allow" %}
+         <a href="#" id="module" class="tiny round button">{% trans "Make Module" %}</a>
+        {% endif %}
+      {% endif %}
+      {% endcomment %}
+
+
+  {% if "Topic" in node.member_of_names_list or "Concept" in node.member_of_names_list %}
+    <!-- Below code/widgets will only be shown for all resource instances/documents
+         which are neither Topic nor Concept
+    -->
+    <li><a data-reveal-id="view-map-widget"><i class="fi-marker"></i> {% trans "Location" %}</a></li>
+
+    <li><a href="#" data-dropdown="graph-list" data-options="is_hover:true;align:left"><i class="fi-share"></i> {% trans "Graphs" %}</a>
+    </li>
+
+    <ul id="graph-list" class="f-dropdown" data-dropdown-content>
+      <li><a href="#view-concept-graph" data-reveal-id="view-concept-graph" id="clickConceptGraph">{% trans "Concept Graph" %}</a></li>
+
+      {% if node.collection_set %}
+      <li><a href="#view-collection-graph" data-reveal-id="view-collection-graph">{% trans "Collection Graph" %}</a></li>
+      {% endif %}
+
+      {% if node.prior_node %}
+      <li><a href="#view-dependency-graph" data-reveal-id="view-dependency-graph">{% trans "Dependency Graph" %}</a></li>
+      {% endif %}               
+    </ul>
+  {% endif %}
+
+    <!-- 
+    <li>
+      <a id = "toggleContainer"  href="#" onClick="toggle(this);">
+        <i class="fi-comments annotateIcon"></i> {% trans "Annotate" %}
+      </a>
+    </li> 
+    --> 
+    
+    <br/>
+    <div class="label-list"> 
+      <b>{% trans "Tags" %}</b><br/>
+      {% if node.tags %}
+        {% for tag in node.tags %}
+          <a href="{% url 'tag_info' groupid tag %}"><span class="label">{{tag}}</span></a>
+          <span itemprop="{{schema.1.tags}}" content="{{tag}}"></span>
+        {% endfor %}
+      {% else %}
+        <span class="label">{% trans "No tags defined" %}</span>
+      {% endif %}
+
+    </div><hr/>
+
+    <div>
+    {% include "ndf/rating.html" %} 
+    </div><br/>
+
+    <div>
+      <ul class="side-nav">
+        <li><b>{% trans "In other languages" %}</b></li>
+        {% get_possible_translations node as tran %}
+        {% for each in tran %}
+          {% for k,v in each.items %}
+          <li><a href="{% url 'page_details' groupid k %}">{{v}}</a></li>
+          {% endfor %}
+        {% endfor %}
+          
+        <!-- This button translates given resource -->
+        {% if user.is_authenticated %}
+          {% if user_is_joined == "joined" or user_is_joined == "author" %}
+            <li>
+              <a href="{% url 'node_translation' group_name_tag node %} ">{% trans "Translate" %}</a>
+            </li>
+          {% endif %}
+        {% endif %}
+      </ul>
+    </div>
+
+    </div>
+  </ul>
+
+  </section>
+
     
     
 <script type="text/javascript">
-
-  // for discussion tab
-  // storing ndf_tags return values in JS variables
-  {% user_access_policy groupid request.user as user_access %}
-  var user_access = "{{ user_access }}"; // "allow" or "disallow"
-
-  {% edit_policy groupid node request.user as status %}
-  var edit_policy = "{{ status }}"; // "allow" or "disallow"
-
-  $("#orgitdownreps").orgitdown(mySettings);
-
-  function createDiscussion()
-  {
-
-    if( user_access == "allow" && edit_policy == "allow" )
-    {  
-        // ajax to create thread for first time.
-        $.ajax({
-
-          url: "{% url 'create_discussion' group_id node.pk %}",
-
-          success: function(data){
-
-            data = JSON.parse(data);
-
-            if( (data[0] == "thread-created") || (data[0] == "Thread-exist") )
-            {
-
-                // $("#create-discussion").hide();
-
-                // changing method to behave same as sub-reply button
-                $("#create-discussion").attr("onclick", "openOrgEditor($(this))");
-
-                $("#prior-node").val("{{ node.pk }}") // _id
-                // $("input[data-id='{{ node.pk }}']").val("{{ node.pk }}") // _id
-                
-                $("#create-discussion").trigger("click");
-              }
-              // else if( data[0] == "Thread-exist" ){
-              //   // alert(data)
-              //   $("#create-discussion").hide();
-              //   $("#prior-node").val("{{ node.pk }}") // _id         
-              //   // changing method to behave same as sub-reply button   
-              //   $("#create-discussion").attr("onclick", "openOrgEditor($(this))");
-              //   $("create-discussion").trigger("click");
-              // }
-              else{ alert(data) }
-
-            }//,
-          // complete: function(){
-            // $("#prior-node").val("") // removing _id
-          // }
-
-        });
-        // --- END ajax and create thread for first time.
-      }
-      else
-      {
-        alert("To start discussion you need to login and be the member of this group.");
-      }
-
-    }
-  // --- END of createDiscussion()
-
-
-  // function called by "Add Reply" and "Reply" buttons to open editor
-  function openOrgEditor(sourceObj)
-  {
-    if( user_access == "allow" && edit_policy == "allow" )
-    {
-
-      var sourceObjDataId = $(sourceObj).attr("data-id"); // prior-node _id
-      $("#prior-node").val(sourceObjDataId);
-      
-      // tempOrgObj = $("#org").clone(true, true);
-      // console.log($(sourceObj));
-      
-      // $("#org").detach();
-      
-      // if( sourceObjDataId == "{{ node.pk }}")
-      // {
-      //   $('div[data-id="'+ sourceObjDataId +'"]').after(tempOrgObj);
-      // }
-      // else
-      // {
-      //   $tempPrior = $('div[data-id="'+ sourceObjDataId +'"]').parent();
-      //   calcMargLeft = $tempPrior.css("margin-left");
-      //   calcMargLeft = (parseFloat(calcMargLeft, 10) + 48) + "px";
-
-      //   $('div[data-id="'+ sourceObjDataId +'"]').parent().after(tempOrgObj);
-      // }
-      
-      // $("#org").fadeIn();
-      // if( sourceObjDataId != "{{ node.pk }}")
-      // {
-        $('#org').foundation('reveal', 'open');
-      // }
-    }
-    else
-    {
-      alert("To start discussion you need to login and be the member of this group.");
-    }
-  }
-
-
-  function addReply(sourceObj)
-  {
-    $('#org').foundation('reveal', 'close');
-
-    var priorNodeId = $("#prior-node").val(),
-        replyContent = $("#orgitdownreps").val().trim();
-
-    // If reply is non empty - make ajax to save reply.
-    if( (replyContent.length > 0) && (priorNodeId.length == 24) )
-    {
-
-      $.ajax({
-        
-        type: "POST",
-
-        url: "{% url 'discussion_reply' group_id %}",
-
-        data: { 
-
-          "csrfmiddlewaretoken": "{{ csrf_token }}",
-          "prior_node_id": priorNodeId,
-          "reply_text_content": replyContent
-        },
-
-        success: function(data){
-            
-            data = JSON.parse(data);
-            aaa = data;
-
-            if( data[0] == "reply_saved" )
-            {
-              
-              $("#org").fadeOut();          // hide editor
-              $("#orgitdownreps").val("");  // make textarea empty
-
-              if(priorNodeId == "{{ node.pk }}")  // main reply
-              {
-                // change the text of Start discussion and make it visible
-                $("#create-discussion").html("Initiate New Discussion Thread");                
-                // $("#create-discussion").fadeIn();
-
-                // [0:"status_info", 1:"reply_id", 2:"prior_node", 3:"html_content", 4:"org_content", 5:"user_id", 6:"user_name", 7:"created_at" ]
-
-                // add reply text content after #replies-area
-                $("#replies-area").prepend(
-                  "<div style='margin-top:20px;' data-priornode-id='"+ data[2] +"' class='disc-replies'>"
-                  + "<div class='row'><div class='small-3 columns'><a href='/home/"+ data[5] +"/dashboard' class='text-center'>"
-                  + "<span class='align-center'><i class='fi-torso'></i></span>"
-                  + "<label>" + data[6] + "</label></a></div>"
-                  + "<div class='small-9 columns'>"+ data[3] +"</div></div>"
-
-                  + "<div class='row'><div class='small-9 columns'><small>"
-                  + data[7] + "</small></div> <div data-org-content='"
-                  + data[4] + "' onclick='openOrgEditor($(this))' data-id='" 
-                  + data[1] + "' class='reply-btn text-right small-3 columns'> reply </div></div></div>"
-                  ).fadeIn(8000);
-
-              }
-              else  // sub-reply
-              {
-                $tempPrior = $('div[data-id="'+ priorNodeId +'"]').parent().parent();
-                calcMargLeft = $tempPrior.css("margin-left");
-                calcMargLeft = (parseFloat(calcMargLeft, 10) + 48) + "px";
-
-                // add reply text content as sub-reply
-                $($tempPrior).after(
-                "<div style='margin-left:"+ calcMargLeft +"' data-priornode-id='"+ data[2] +"' class='disc-replies'>"
-                  + "<div class='row'><div class='small-3 columns'><a href='/home/"+ data[5] +"/dashboard' class='text-center'>"
-                  + "<span class='align-center'><i class='fi-torso'></i></span>"
-                  + "<label>" + data[6] + "</label></a></div>"
-                  + "<div class='small-9 columns'>"+ data[3] +"</div></div>"
-
-                  + "<div class='row'><div class='small-9 columns'><small>"
-                  + data[7] + "</small></div> <div data-org-content='"
-                  + data[4] + "' onclick='openOrgEditor($(this))' data-id='" 
-                  + data[1] + "' class='reply-btn text-right small-3 columns'> reply </div></div></div>"
-                  ).fadeIn(8000);
-              }
-            }
-            else if( data[0] == "no_content" ){
-              
-              alert("Please provide the reply content.")
-            }
-            else { alert(data) }
-          }
-      });// --- END of ajax to save reply    
-    }
-    else // content is not provided
-    {
-      alert("Please provide the reply content.")
-    } // --- END of IF-ELSE
-  
-  } // --- END of addReply()
-
-  // --- END of discussion code ----
 
 
   // Taken value of svg data of that node globally
@@ -1062,6 +874,21 @@ This section has been integrated to groupdashboard and appears in block app_acti
   $(document).on('click','#clickConceptGraph',function(){
     $('#view-concept-graph #chart-concept').append(svgdata); 
     $('#view-concept-graph').foundation('reveal', 'open'); 
+  });
+
+  $(document).on('click','.view-discussion',function(){
+    $("#view-page").css("display", "none");
+    $(".page-view").removeClass("active");
+    $(".discussion-view").addClass("active");    
+    $("#view-discussion").css("display", "block");
+
+  });
+
+  $(document).on('click','.view-page',function(){
+    $("#view-discussion").css("display", "none");
+    $(".discussion-view").removeClass("active");
+    $(".page-view").addClass("active");    
+    $("#view-page").css("display", "block");
   });
 
   $(document).on('dblclick','.imgLightbox',function(){
@@ -1108,6 +935,8 @@ This section has been integrated to groupdashboard and appears in block app_acti
 });
 
   });
+
+
   $(document).on('opened', '#view-map-widget[data-reveal]', function () {  
       
     map.invalidateSize();  

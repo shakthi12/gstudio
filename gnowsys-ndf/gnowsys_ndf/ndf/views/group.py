@@ -215,9 +215,9 @@ def create_group(request,group_id):
     colg.group_type = request.POST.get('group_type', "")        
     colg.edit_policy = request.POST.get('edit_policy', "")
     colg.subscription_policy = request.POST.get('subscription', "")
-    colg.visibility_policy = request.POST.get('existance', "")
-    colg.disclosure_policy = request.POST.get('member', "")
-    colg.encryption_policy = request.POST.get('encryption', "")
+    colg.visibility_policy = request.POST.get('existance', 'ANNOUNCED')
+    colg.disclosure_policy = request.POST.get('member', 'DISCLOSED_TO_MEM')
+    colg.encryption_policy = request.POST.get('encryption', 'NOT_ENCRYPTED')
     colg.agency_type=request.POST.get('agency_type',"")
     colg.save()
     
@@ -369,16 +369,12 @@ def group_dashboard(request,group_id=None):
     grpid=groupobj['_id']
     pass
 
-  if groupobj.status == u"DRAFT":
-    groupobj, ver = get_page(request, groupobj)
-
   # Call to get_neighbourhood() is required for setting-up property_order_list
   groupobj.get_neighbourhood(groupobj.member_of)
 
   property_order_list = []
   if groupobj.has_key("group_of"):
     if groupobj['group_of']:
-      # print "\n ", groupobj['group_of'][0], "\n"
       college = collection.Node.one({'_type': "GSystemType", 'name': "College"}, {'_id': 1})
 
       if college:
@@ -422,6 +418,7 @@ def edit_group(request,group_id):
     pass
 
   page_node = gs_collection.GSystem.one({"_id": ObjectId(group_id)})
+  title = gst_group.name
   if request.method == "POST":
     is_node_changed=get_node_common_fields(request, page_node, group_id, gst_group)
     
@@ -441,7 +438,7 @@ def edit_group(request,group_id):
       page_node, ver = get_page(request, page_node)
       page_node.get_neighbourhood(page_node.member_of) 
   return render_to_response("ndf/edit_group.html",
-                                    { 'node': page_node,
+                                    { 'node': page_node,'title':title,
                                       'appId':app._id,
                                       'groupid':group_id,
                                       'group_id':group_id

@@ -65,16 +65,13 @@ GST_IMAGE = collection.GSystemType.one({'name': GAPPS[3], '_type':'GSystemType'}
 GST_VIDEO = collection.GSystemType.one({'name': GAPPS[4], '_type':'GSystemType'})
 pandora_video_st = collection.Node.one({'$and':[{'name':'Pandora_video'}, {'_type':'GSystemType'}]})
 app=collection.Node.one({'name':u'File','_type':'GSystemType'})
-pandoravideoCollection=collection.Node.find({'member_of':pandora_video_st._id})
-     
-    
 
 # VIEWS DEFINED FOR GAPP -- 'FILE'
 
 lock=threading.Lock()
 count = 0    
 
-def file(request, group_id, file_id=None):
+def file(request, group_id, file_id=None, page_no=1):
     """
    * Renders a list of all 'Files' available within the database.
     """
@@ -121,6 +118,8 @@ def file(request, group_id, file_id=None):
         shelves = []
     # End of user shelf
 
+    pandoravideoCollection=collection.Node.find({'member_of':pandora_video_st._id, 'group_set': ObjectId(group_id) })
+
     if request.method == "POST":
       # File search view
       title = GST_FILE.name
@@ -154,7 +153,10 @@ def file(request, group_id, file_id=None):
                                                 'group_set': {'$all': [ObjectId(group_id)]}
                                             },
 
-                                               {'member_of': {'$all': [pandora_video_st._id]}}]
+                                               {'member_of': {'$all': [pandora_video_st._id]},
+                                                'group_set': {'$all': [ObjectId(group_id)]}
+                                               }
+                                              ]
                                     }).sort('last_update', -1)
       else:
           files = collection.Node.find({'member_of': {'$all': [ObjectId(file_id)]},
@@ -287,7 +289,6 @@ def file(request, group_id, file_id=None):
       datavisual = json.dumps(datavisual)
 
       already_uploaded = request.GET.getlist('var', "")
-
       return render_to_response("ndf/file.html",
                                 {'title': title,
                                  'appId':app._id,
@@ -305,74 +306,41 @@ def file(request, group_id, file_id=None):
       # File list view
       title = GST_FILE.name
       datavisual = []
+      no_of_objs_pp = 24  # no. of objects per page to be list
+
       if GSTUDIO_SITE_VIDEO == "pandora" or GSTUDIO_SITE_VIDEO == "pandora_and_local":
 
-          files = collection.Node.find({'$or':[{'member_of': {'$all': [ObjectId(file_id)]}, 
-                                                '_type': 'File', 'fs_file_ids':{'$ne': []}, 
-                                                'group_set': {'$all': [ObjectId(group_id)]},
-                                                '$or': [
-                                                    {'access_policy': u"PUBLIC"},
-                                                    {'$and': [
-                                                        {'access_policy': u"PRIVATE"}, 
-                                                        {'created_by': request.user.id}
-                                                    ]
-                                                 }
-                                                ]
-                                            },
-                                               {'member_of': {'$all': [pandora_video_st._id]}}
-                                           ]}).sort("last_update", -1)
-      else:
-          files = collection.Node.find({'member_of': {'$all': [ObjectId(file_id)]},
-                                        '_type': 'File', 'fs_file_ids':{'$ne': []},
-                                        'group_set': {'$all': [ObjectId(group_id)]},
-                                        '$or': [
-                                            {'access_policy': u"PUBLIC"},
-                                            {'$and': [
-                                                {'access_policy': u"PRIVATE"},
-                                                {'created_by': request.user.id}
-                                            ]
-                                         }
-                                        ]
-                                    }).sort("last_update", -1)
+        files_dict = get_query_cursor_filetype('$all', [ObjectId(file_id)], group_id, request.user.id, page_no, no_of_objs_pp, "all_files")
 
-      docCollection = collection.Node.find({'member_of': {'$nin': [ObjectId(GST_IMAGE._id), ObjectId(GST_VIDEO._id)]}, 
-                                            '_type': 'File','fs_file_ids': {'$ne': []}, 
-                                            'group_set': {'$all': [ObjectId(group_id)]},
-                                            '$or': [
-                                              {'access_policy': u"PUBLIC"},
-                                              {'$and': [
-                                                {'access_policy': u"PRIVATE"}, 
-                                                {'created_by': request.user.id}
-                                                ]
-                                              }
-                                            ]
-                                          }).sort("last_update", -1)
-      
-      imageCollection = collection.Node.find({'member_of': {'$all': [ObjectId(GST_IMAGE._id)]}, 
-                                              '_type': 'File','fs_file_ids': {'$ne': []}, 
-                                              'group_set': {'$all': [ObjectId(group_id)]},
-                                              '$or': [
-                                                {'access_policy': u"PUBLIC"},
-                                                {'$and': [
-                                                  {'access_policy': u"PRIVATE"}, 
-                                                  {'created_by': request.user.id}
-                                                  ]
-                                                }
-                                              ]
-                                            }).sort("last_update", -1)
-      
-      videoCollection = collection.Node.find({'member_of': {'$all': [ObjectId(GST_VIDEO._id)]}, 
-                                              '_type': 'File','fs_file_ids': {'$ne': []}, 
-                                              'group_set': {'$all': [ObjectId(group_id)]},
-                                              '$or': [
-                                                {'access_policy': u"PUBLIC"},
-                                                {'$and': [
-                                                  {'access_policy': u"PRIVATE"}, 
-                                                  {'created_by': request.user.id}
-                                                  ]
-                                                }
-                                              ]
-                                            }).sort("last_update", -1)
+        file_pages = files_dict["result_pages"]
+        files_pc = files_dict["result_cur"]
+
+      else:
+        files_dict = get_query_cursor_filetype('$all', [ObjectId(file_id)], group_id, request.user.id, page_no, no_of_objs_pp)
+
+        files_pc = files_dict["result_cur"]
+        file_pages = files_dict["result_pages"]
+
+      # --- for documents ---
+      doc = get_query_cursor_filetype('$nin', [ObjectId(GST_IMAGE._id), ObjectId(GST_VIDEO._id)], group_id, request.user.id, page_no, no_of_objs_pp)
+
+      docCollection = doc["result_cur"]
+      docs_pc = doc["result_cur"]
+      doc_pages = doc["result_pages"]
+
+      # --- for images ---
+      image_dict = get_query_cursor_filetype('$all', [ObjectId(GST_IMAGE._id)], group_id, request.user.id, page_no, no_of_objs_pp)
+
+      imageCollection = image_dict["result_cur"]
+      images_pc = image_dict["result_cur"]
+      image_pages = image_dict["result_pages"]
+
+      # --- for videos ---
+      video_dict = get_query_cursor_filetype('$all', [ObjectId(GST_VIDEO._id)], group_id, request.user.id, page_no, no_of_objs_pp)
+
+      videoCollection = video_dict["result_cur"]
+      videos_pc = video_dict["result_cur"]
+      video_pages = video_dict["result_pages"]
       
       already_uploaded = request.GET.getlist('var', "")     
 
@@ -389,8 +357,13 @@ def file(request, group_id, file_id=None):
 
       # pandora_video_id = []
       # source_id_set=[]
-      get_member_set = collection.Node.find({'$and':[{'member_of': {'$all': [ObjectId(pandora_video_st._id)]}},{'_type':'File'}]})
-      
+      # get_member_set = collection.Node.find({'$and':[{'member_of': {'$all': [ObjectId(pandora_video_st._id)]}},{'group_set': ObjectId(group_id)},{'_type':'File'}]})
+      # pandora_pages = paginator.Paginator(get_member_set, page_no, no_of_objs_pp)
+      all_videos = get_query_cursor_filetype('$all', [ObjectId(GST_VIDEO._id)], group_id, request.user.id, page_no, no_of_objs_pp, "all_videos")
+
+      pandora_pages = all_videos["result_pages"]
+      get_member_set = all_videos["result_cur"]
+
       #for each in get_member_set:
   
        #  pandora_video_id.append(each['_id'])
@@ -405,7 +378,6 @@ def file(request, group_id, file_id=None):
               # for each in pandora_video_id:
               #     get_video = collection.GSystem.find({'member_of': {'$all': [ObjectId(file_id)]}, '_type': 'File', 'group_set': {'$all': [ObjectId(group_id)]}})
                    
-
       datavisual.append({"name":"Doc", "count":docCollection.count()})
       datavisual.append({"name":"Image","count":imageCollection.count()})
       datavisual.append({"name":"Video","count":videoCollection.count()})
@@ -417,14 +389,259 @@ def file(request, group_id, file_id=None):
                                  'appId':app._id,
                                  'already_uploaded': already_uploaded,'shelf_list': shelf_list,'shelves': shelves,
                                  # 'sourceid':source_id_set,
-                                 'files': files, 'docCollection': docCollection, 'imageCollection': imageCollection,
-                                 'videoCollection': videoCollection,'pandoravideoCollection':pandoravideoCollection, 
+                                 'file_pages': file_pages, 'image_pages': image_pages,
+                                 'doc_pages': doc_pages, 'video_pages': video_pages, "pandora_pages": pandora_pages,
+                                 'files': files_pc, 'docCollection': docs_pc, 'imageCollection': images_pc,
+                                 'videoCollection': videos_pc, 'pandoravideoCollection':pandoravideoCollection, 
                                  'pandoraCollection':get_member_set,'is_video':is_video,'groupid': group_id,
-                                 'group_id':group_id,"datavisual":datavisual
+                                 'group_id':group_id,"datavisual":datavisual, "detail_urlname": "file_detail"
                                 }, 
                                 context_instance = RequestContext(request))
     else:
-      return HttpResponseRedirect(reverse('homepage',kwargs={'group_id': group_id, 'groupid':group_id}))
+        return HttpResponseRedirect(reverse('homepage',kwargs={'group_id': group_id, 'groupid':group_id}))
+
+
+def get_query_cursor_filetype(operator, member_of_list, group_id, userid, page_no, no_of_objs_pp, tab_type=None):
+    '''
+    This method used to fire mongoDB query and send its result along with pagination details. This method is specially for "_type": "File" objects only.
+
+    Arguments:
+    -- operator : it's mongoDB operators like "$all", "$nin", "$or", ..., etc.
+    -- member_of_list : It's list of member_of. Example: [ObjectId('5401eb2c90b550696393b9df')] 
+    -- group_id : Group's "_id".
+    -- userid : Example. request.user.id
+    -- page_no : It's page no required for getting appropriate paginated cursor.
+    -- no_of_objs_pp : No. of objects to be shown per page.
+
+    Result: It gives result as dictionary. {"result_cur": "", "result_pages":"", "result_paginated_cur": ""}
+    -- result_cur : It's mongoDB cursor.
+    -- result_pages : It's mongokit.paginator cursor. Containing all the info for pagination.
+ 
+    '''
+
+    result_dict = {"result_cur": "", "result_pages":"", "result_paginated_cur": "", "result_count": ""}
+
+    if tab_type == "all_videos" or tab_type == "all_files":
+        result_cur = collection.Node.find({'$or':[{'member_of': {'$all': member_of_list}, 
+                                                '_type': 'File', 'fs_file_ids':{'$ne': []}, 
+                                                'group_set': {'$all': [ObjectId(group_id)]},
+                                                '$or': [
+                                                    {'access_policy': u"PUBLIC"},
+                                                    {'$and': [
+                                                        {'access_policy': u"PRIVATE"}, 
+                                                        {'created_by': userid}
+                                                    ]
+                                                 }
+                                                ]
+                                                },{'member_of': {'$all': [pandora_video_st._id]}, 
+                                                  'group_set': {'$all': [ObjectId(group_id)]},
+                                                  '_type': "File"
+                                                  }
+                                           ]}).sort("last_update", -1)
+    else:
+        result_cur = collection.Node.find({'member_of': {operator: member_of_list},
+                                    '_type': 'File', 'fs_file_ids':{'$ne': []},
+                                    'group_set': {'$all': [ObjectId(group_id)]},
+                                    '$or': [
+                                        {'access_policy': u"PUBLIC"},
+                                        {'$and': [
+                                            {'access_policy': u"PRIVATE"},
+                                            {'created_by': userid}
+                                        ]
+                                     }
+                                    ]
+                                }).sort("last_update", -1)
+
+    if result_cur:
+
+        result_pages = paginator.Paginator(result_cur, page_no, no_of_objs_pp)
+        result_dict["result_pages"] = result_pages
+        result_dict["result_cur"] = result_cur
+
+    return result_dict
+
+
+def paged_file_objs(request, group_id, filetype, page_no):
+    '''
+    Method to implement pagination in File and E-Library app.
+    '''
+    if request.is_ajax() and request.method == "POST":
+
+        app = request.POST.get("title", "")
+
+        no_of_objs_pp = 24
+
+        ins_objectid  = ObjectId()
+
+        if ins_objectid.is_valid(group_id) is False :
+            group_ins = collection.Node.find_one({'_type': "Group","name": group_id})
+            if group_ins:
+                group_id = str(group_ins._id)
+            else :
+                auth = collection.Node.one({'_type': 'Author', 'name': unicode(request.user.username) })
+                if auth :
+                    group_id = str(auth._id)
+
+        file_ins = collection.Node.find_one({'_type':"GSystemType", "name":"File"})
+        if file_ins:
+            file_id = str(file_ins._id)
+
+        if app == "E-Library":
+            files = collection.Node.find({'$or':[{'member_of': ObjectId(file_id), 
+                                  '_type': 'File', 'fs_file_ids':{'$ne': []}, 
+                                  'group_set': ObjectId(group_id),
+                                  '$or': [{'access_policy': u"PUBLIC"},
+                                            {'$and': [{'access_policy': u"PRIVATE"}, 
+                                                      {'created_by': request.user.id}
+                                                     ]
+                                            }
+                                        ]
+                                 },
+                                 {'member_of': ObjectId(pandora_video_st._id),
+                                  'group_set': ObjectId(group_id)
+                                 }]
+                                 }).sort("last_update", -1)
+
+            coll = []
+            for each in files:
+                coll.append(each._id)
+
+            files.rewind()
+            gattr = collection.Node.one({'_type': 'AttributeType', 'name': u'educationaluse'})
+      
+        if filetype == "all":
+            if app == "File":
+                if GSTUDIO_SITE_VIDEO == "pandora" or GSTUDIO_SITE_VIDEO == "pandora_and_local":
+                    result_dict = get_query_cursor_filetype('$all', [ObjectId(file_id)], group_id, request.user.id, page_no, no_of_objs_pp, "all_files")
+
+                else:
+                    result_dict = get_query_cursor_filetype('$all', [ObjectId(file_id)], group_id, request.user.id, page_no, no_of_objs_pp)
+            elif app == "E-Library":
+                if files:
+                    result_paginated_cur = files
+                    result_pages = paginator.Paginator(result_paginated_cur, page_no, no_of_objs_pp)
+
+        elif filetype == "doc":
+            if app == "File":
+                result_dict = get_query_cursor_filetype('$nin', [ObjectId(GST_IMAGE._id), ObjectId(GST_VIDEO._id)], group_id, request.user.id, page_no, no_of_objs_pp)
+
+            elif app == "E-Library":
+                d_Collection = collection.Node.find({'_type': "GAttribute", 'attribute_type.$id': gattr._id,"subject": {'$in': coll} ,"object_value": "Documents"}).sort("last_update", -1)
+
+                doc = []
+                for e in d_Collection:
+                    doc.append(e.subject)
+
+                result_paginated_cur = collection.Node.find({ '$or':[{'_id': {'$in': doc}},
+
+                            {'member_of': {'$nin': [ObjectId(GST_IMAGE._id), ObjectId(GST_VIDEO._id)]},
+                                                '_type': 'File', 'group_set': {'$all': [ObjectId(group_id)]},
+                                                '$or': [
+                                                      {'access_policy': u"PUBLIC"},
+                                                        {'$and': [{'access_policy': u"PRIVATE"}, {'created_by': request.user.id}]}
+                                                       ]
+                                                }]
+
+                    }).sort("last_update", -1)
+
+
+                result_pages = paginator.Paginator(result_paginated_cur, page_no, no_of_objs_pp)
+
+        elif filetype == "image":
+            if app == "File":
+                result_dict = get_query_cursor_filetype('$all', [ObjectId(GST_IMAGE._id)], group_id, request.user.id, page_no, no_of_objs_pp)
+            elif app == "E-Library":
+                img_Collection = collection.Node.find({'_type': "GAttribute", 'attribute_type.$id': gattr._id,"subject": {'$in': coll} ,"object_value": "Images"}).sort("last_update", -1)
+                image = []
+                for e in img_Collection:
+                    image.append(e.subject)
+
+                # result_paginated_cur = collection.Node.find({'_id': {'$in': image} })    
+                result_paginated_cur = collection.Node.find({'$or': [{'_id': {'$in': image} }, 
+
+                            {'member_of': {'$all': [ObjectId(GST_IMAGE._id)]}, 
+                                                 '_type': 'File', 'group_set': {'$all': [ObjectId(group_id)]},
+                                                 '$or': [
+                                                      {'access_policy': u"PUBLIC"},
+                                                        {'$and': [{'access_policy': u"PRIVATE"}, {'created_by': request.user.id}]}
+                                                       ]
+                                                }]
+
+                    }).sort("last_update", -1)
+
+                result_pages = paginator.Paginator(result_paginated_cur, page_no, no_of_objs_pp)                
+
+        elif filetype == "video":
+            if app == "File":
+                result_dict = get_query_cursor_filetype('$all', [ObjectId(GST_VIDEO._id)], group_id, request.user.id, page_no, no_of_objs_pp, "all_videos")
+
+            elif app == "E-Library":
+                vid_Collection = collection.Node.find({'_type': "GAttribute", 'attribute_type.$id': gattr._id,"subject": {'$in': coll} ,"object_value": "Videos"}).sort("last_update", -1)
+                video = []
+                for e in vid_Collection:
+                    video.append(e.subject)
+
+                result_paginated_cur = collection.Node.find({'$or': [{'_id': {'$in': video} }, 
+
+                          {'member_of': {'$in': [ObjectId(GST_VIDEO._id),ObjectId(pandora_video_st._id)]}, 
+                                                 '_type': 'File', 'group_set': {'$all': [ObjectId(group_id)]},
+                                                 '$or': [
+                                                      {'access_policy': u"PUBLIC"},
+                                                        {'$and': [{'access_policy': u"PRIVATE"}, {'created_by': request.user.id}]}
+                                                       ]
+                                                }]
+
+                    }).sort("last_update", -1)
+
+
+                result_pages = paginator.Paginator(result_paginated_cur, page_no, no_of_objs_pp)
+
+        elif filetype == "interactives" and app == "E-Library":
+            interCollection = collection.Node.find({'_type': "GAttribute", 'attribute_type.$id': gattr._id, "subject": {'$in': coll} ,"object_value": "Interactives"}).sort("last_update", -1)
+            interactive = []
+            for e in interCollection:
+                interactive.append(e.subject)
+
+            result_paginated_cur = collection.Node.find({'_id': {'$in': interactive} })    
+            result_pages = paginator.Paginator(result_paginated_cur, page_no, no_of_objs_pp)
+
+        elif filetype == "audio" and app == "E-Library":
+            aud_Collection = collection.Node.find({'_type': "GAttribute", 'attribute_type.$id': gattr._id,"subject": {'$in': coll} ,"object_value": "Audios"}).sort("last_update", -1)
+
+            audio = []
+            for e in aud_Collection:
+                audio.append(e.subject)
+
+            # result_paginated_cur = collection.Node.find({'_id': {'$in': audio} })  
+
+            result_paginated_cur = collection.Node.find({ '$or':[{'_id': {'$in': audio}},
+
+                      {'member_of': {'$nin': [ObjectId(GST_IMAGE._id), ObjectId(GST_VIDEO._id)]},
+                                                '_type': 'File', 'group_set': {'$all': [ObjectId(group_id)]},
+                                                'mime_type': 'audio',
+                                                '$or': [
+                                                      {'access_policy': u"PUBLIC"},
+                                                        {'$and': [{'access_policy': u"PRIVATE"}, {'created_by': request.user.id}]}
+                                                       ]
+                                                }]
+
+                    }).sort("last_update", -1)
+
+
+            result_pages = paginator.Paginator(result_paginated_cur, page_no, no_of_objs_pp)
+
+        if app == "File":
+            result_cur = result_dict["result_cur"]
+            result_paginated_cur = result_dict["result_cur"]
+            result_pages = result_dict["result_pages"]
+
+        return render_to_response ("ndf/file_list_tab.html", {
+                "group_id": group_id, "group_name_tag": group_id, "groupid": group_id,
+                "resource_type": result_paginated_cur, "detail_urlname": "file_detail", 
+                "filetype": filetype, "res_type_name": "", "page_info": result_pages
+            }, 
+            context_instance = RequestContext(request))
+
         
 @login_required    
 def uploadDoc(request, group_id):
@@ -440,6 +657,7 @@ def uploadDoc(request, group_id):
                 group_id = str(auth._id)
     else :
         pass
+
     if request.method == "GET":
         page_url = request.GET.get("next", "")
         template = "ndf/UploadDoc.html"
@@ -512,7 +730,7 @@ def submitDoc(request, group_id):
        
         if img_type != "": 
             
-            return HttpResponseRedirect(reverse('userDashboard', kwargs={'group_id': group_id , 'usrid': userid}))
+            return HttpResponseRedirect(reverse('uDashboard', kwargs={'group_id': group_id}))
 
         elif topic_file != "": 
             
@@ -873,6 +1091,7 @@ def file_detail(request, group_id, _id):
     """Depending upon mime-type of the node, this view returns respective display-view.
     """
     ins_objectid  = ObjectId()
+    imageCollection=""
     if ins_objectid.is_valid(group_id) is False :
         group_ins = collection.Node.find_one({'_type': "Group","name": group_id})
         auth = collection.Node.one({'_type': 'Author', 'name': unicode(request.user.username) })
@@ -896,6 +1115,27 @@ def file_detail(request, group_id, _id):
         if file_node.mime_type == 'video':      
             file_template = "ndf/video_detail.html"
         elif 'image' in file_node.mime_type:
+            imageCollection=imageCollection = collection.Node.find({'member_of': {'$all': [ObjectId(GST_IMAGE._id)]}, 
+                                              '_type': 'File', 
+                                              '$or': [
+                                                  {'$or': [
+                                                    {'access_policy': u"PUBLIC"},
+                                                      {'$and': [{'access_policy': u"PRIVATE"}, {'created_by': request.user.id}]}
+                                                    ]
+                                                  }
+                                                ,
+                                                {'$and': [
+                                                  {'$or': [
+                                                    {'access_policy': u"PUBLIC"},
+                                                    {'$and': [{'access_policy': u"PRIVATE"}, {'created_by': request.user.id}]}
+                                                    ]
+                                                  }
+                                                  ]
+                                                }
+                                              ],
+                                              'group_set': {'$all': [ObjectId(group_id)]}
+                                            }).sort("last_update", -1)
+
             file_template = "ndf/image_detail.html"
         else:
             file_template = "ndf/document_detail.html"
@@ -938,7 +1178,8 @@ def file_detail(request, group_id, _id):
                                 'annotations' : annotations,
                                 'shelf_list': shelf_list,
                                 'shelves': shelves, 
-                                'breadcrumbs_list': breadcrumbs_list
+                                'breadcrumbs_list': breadcrumbs_list,
+                                'imageCollection':imageCollection,
                               },
                               context_instance = RequestContext(request)
                              )
@@ -963,14 +1204,17 @@ def getFileThumbnail(request, group_id, _id):
 
     if file_node is not None:
         if file_node.fs_file_ids:
-
           # getting latest uploaded pic's _id
           file_fs = file_node.fs_file_ids[ len(file_node.fs_file_ids) - 1 ]
          
           if (file_node.fs.files.exists(file_fs)):
             # f = file_node.fs.files.get(ObjectId(file_fs))
             ## This is to display the thumbnail properly, depending upon the size of file.
-            f = file_node.fs.files.get(ObjectId(file_node.fs_file_ids[ len(file_node.fs_file_ids) - 1 ]))
+            #f = file_node.fs.files.get(ObjectId(file_node.fs_file_ids[ len(file_node.fs_file_ids) - 1 ]))
+            if len(file_node.fs_file_ids) > 1:
+              f = file_node.fs.files.get(ObjectId(file_node.fs_file_ids[1]))
+            else:
+              f = file_node.fs.files.get(ObjectId(file_node.fs_file_ids[0]))
             # if (file_node.fs.files.exists(file_node.fs_file_ids[1])):
             #     f = file_node.fs.files.get(ObjectId(file_node.fs_file_ids[1]))
             return HttpResponse(f.read(), content_type=f.content_type)
@@ -1031,6 +1275,7 @@ def file_edit(request,group_id,_id):
         pass
 
     file_node = collection.File.one({"_id": ObjectId(_id)})
+    title = GST_FILE.name
 
     if request.method == "POST":
 
@@ -1061,89 +1306,162 @@ def file_edit(request,group_id,_id):
             file_node.get_neighbourhood(file_node.member_of)
 
         return render_to_response("ndf/document_edit.html",
-                                  { 'node': file_node,
+                                  { 'node': file_node,'title':title,
                                     'group_id': group_id,
                                     'groupid':group_id
                                 },
                                   context_instance=RequestContext(request)
                               )
 
+
 # data review in File app
 @login_required
 def data_review(request, group_id, page_no=1):
-  '''
-  To get all the information related to every resource object in the group.
-  '''
-  # getting group obj from name
+    '''
+    To get all the information related to every resource object in the group.
+    '''
+    # getting group obj from name
 
-  group_obj = collection.Node.one({ "_type": {"$in":["Group", "Author"]}, "name": unicode(group_id) })
-  
-  # checking if passed group_id is group name or group Id
-  if group_obj and (group_id == group_obj.name):
-    group_name = group_id
-    group_id = group_obj._id
-  
-  else: # passes group_id is _id and not name
-    ins_objectid  = ObjectId()
-    if ins_objectid.is_valid(group_id):
-      group_obj = collection.Node.one({ "_id":ObjectId(group_id) }) # retrieve Obj by _id
-      if group_obj:
-        group_name = group_obj.name
-        group_id = group_id       # for clarity
+    group_obj = collection.Node.one({"_type": {"$in": ["Group", "Author"]}, "name": unicode(group_id)})
 
-  file_id = collection.Node.find_one({'_type':"GSystemType", "name":"File"}, {"_id":1})
+    # checking if passed group_id is group name or group Id
+    if group_obj and (group_id == group_obj.name):
+        # group_name = group_id
+        group_id = group_obj._id
+      
+    else:  # passes group_id is _id and not name
+        ins_objectid = ObjectId()
+        if ins_objectid.is_valid(group_id):
+            # retrieve Obj by _id
+            group_obj = collection.Node.one({"_id": ObjectId(group_id)})
+            if group_obj:
+                # group_name = group_obj.name
+                group_id = group_id       # for clarity
 
-  # print group_obj
-  files_obj = collection.Node.find({'$or':[{'member_of': {'$all': [ObjectId(file_id._id)]}, 
-                                    '_type': 'File', 'fs_file_ids':{'$ne': []}, 
+    file_id = collection.Node.find_one({'_type': "GSystemType", "name": "File"}, {"_id": 1})
+
+    # print group_obj
+    files_obj = collection.Node.find({'$or': [
+                                    {'member_of': {'$all': [ObjectId(file_id._id)]},
+                                    '_type': 'File', 'fs_file_ids': {'$ne': []},
                                     'group_set': {'$all': [ObjectId(group_id)]},
                                     '$or': [
-                                      {'access_policy': u"PUBLIC"},
-                                      {'$and': [
-                                          {'access_policy': u"PRIVATE"}, 
-                                          {'created_by': request.user.id}
-                                        ]
-                                      }
+                                        {'access_policy': u"PUBLIC"},
+                                        {'$and': [
+                                            {'access_policy': u"PRIVATE"},
+                                            {'created_by': request.user.id}
+                                            ]
+                                        }
                                     ]},
-                                      {'member_of': {'$all': [pandora_video_st._id]}}
-
-                                       ]}).sort("last_update", -1)
+                                        {'member_of': {'$all': [pandora_video_st._id]}}
+                                        ]}).sort("last_update", -1)
                                  
-  
-  # implementing pagination: paginator.Paginator(cursor_obj, <int: page no>, <int: no of obj in each page>)
-  # (ref: https://github.com/namlook/mongokit/blob/master/mongokit/paginator.py)
-  paged_resources = paginator.Paginator(files_obj, page_no, 10)
+    # implementing pagination: paginator.Paginator(cursor_obj, <int: page no>, <int: no of obj in each page>)
+    # (ref: https://github.com/namlook/mongokit/blob/master/mongokit/paginator.py)
+    paged_resources = paginator.Paginator(files_obj, page_no, 10)
 
-  # list to hold resources instances with it's attributes and relations
-  files_list = []
+    # list to hold resources instances with it's attributes and relations
+    files_list = []
 
-  for each_resource in paged_resources.items:
-    each_resource.get_neighbourhood(each_resource.member_of)
-    files_list.append(collection.GSystem(each_resource))
-    # print "\n\n\n========", each_resource.keys()
-    # for each, val in each_resource.iteritems():
-      # print each, "--", val,"\n"
+    for each_resource in paged_resources.items:
+        each_resource.get_neighbourhood(each_resource.member_of)
+        files_list.append(collection.GSystem(each_resource))
+        # print "\n\n\n========", each_resource.keys()
+        # for each, val in each_resource.iteritems():
+          # print each, "--", val,"\n"
 
-  files_obj.close();
+    files_obj.close()
 
-  return render_to_response("ndf/data_review.html",
-                            {
-                              "group_id": group_id, "groupid": group_id,
-                              "files": files_list, "page_info": paged_resources,
-                              "static_educationalsubject": GSTUDIO_RESOURCES_EDUCATIONAL_SUBJECT,
-                              # "static_language": EXTRA_LANG_INFO,
-                              "static_language": GSTUDIO_RESOURCES_LANGUAGES,
-                              "static_educationaluse": GSTUDIO_RESOURCES_EDUCATIONAL_USE,
-                              "static_interactivitytype": GSTUDIO_RESOURCES_INTERACTIVITY_TYPE,
-                              "static_educationalalignment": GSTUDIO_RESOURCES_EDUCATIONAL_ALIGNMENT,
-                              "static_educationallevel": GSTUDIO_RESOURCES_EDUCATIONAL_LEVEL,
-                              "static_curricular": GSTUDIO_RESOURCES_CURRICULAR,
-                              "static_audience": GSTUDIO_RESOURCES_AUDIENCE,
-                              "static_status": list(STATUS_CHOICES),
-                              "static_textcomplexity": GSTUDIO_RESOURCES_TEXT_COMPLEXITY
-                            },
-                            context_instance=RequestContext(request)
-                          )
+    return render_to_response("ndf/data_review.html",
+        {
+            "group_id": group_id, "groupid": group_id,
+            "files": files_list, "page_info": paged_resources,
+            "static_educationalsubject": GSTUDIO_RESOURCES_EDUCATIONAL_SUBJECT,
+            # "static_language": EXTRA_LANG_INFO,
+            "static_language": GSTUDIO_RESOURCES_LANGUAGES,
+            "static_educationaluse": GSTUDIO_RESOURCES_EDUCATIONAL_USE,
+            "static_interactivitytype": GSTUDIO_RESOURCES_INTERACTIVITY_TYPE,
+            "static_educationalalignment": GSTUDIO_RESOURCES_EDUCATIONAL_ALIGNMENT,
+            "static_educationallevel": GSTUDIO_RESOURCES_EDUCATIONAL_LEVEL,
+            "static_curricular": GSTUDIO_RESOURCES_CURRICULAR,
+            "static_audience": GSTUDIO_RESOURCES_AUDIENCE,
+            "static_status": list(STATUS_CHOICES),
+            "static_textcomplexity": GSTUDIO_RESOURCES_TEXT_COMPLEXITY
+        },
+        context_instance=RequestContext(request)
+    )
 # ---END of data review in File app
 
 
+# saving resource object of data review
+@login_required
+def data_review_save(request, group_id):
+    '''
+    Method to save each and every data-row edit of data review app
+    '''
+
+    # getting group obj from name
+    group_obj = collection.Node.one({"_type": {"$in": ["Group", "Author"]}, "name": unicode(group_id)})
+
+    # checking if passed group_id is group name or group Id
+    if group_obj and (group_id == group_obj.name):
+        group_id = group_obj._id
+  
+    else:  # passes group_id is _id and not name
+        ins_objectid = ObjectId()
+        if ins_objectid.is_valid(group_id):
+            # retrieve Obj by _id
+            group_obj = collection.Node.one({"_id": ObjectId(group_id)})
+            if group_obj:
+                group_id = group_id       # for clarity
+
+    node_oid = request.POST.get("node_oid", "")
+    node_details = request.POST.get("node_details", "")
+    node_details = json.loads(node_details)
+
+    # updating some key names of dictionary as per get_node_common_fields.
+    node_details["lan"] = node_details.pop("language")
+    node_details["prior_node_list"] = node_details.pop("prior_node")
+    node_details["login-mode"] = node_details.pop("access_policy")
+    # node_details["collection_list"] = node_details.pop("collection") for future use
+
+    # Making copy of POST QueryDict instance.
+    # To make it mutable and fill in node_details value/s.
+    post_req = request.POST.copy()
+
+    # removing node_details dict from req
+    post_req.pop('node_details')
+    
+    # adding values to post req
+    post_req.update(node_details)
+
+    # overwriting request.POST with newly created QueryDict instance post_req
+    request.POST = post_req
+    # print "\n---\n", request.POST, "\n---\n"
+
+    license = request.POST.get('license', '')
+    
+    file_node = collection.File.one({"_id": ObjectId(node_oid)})
+    if request.method == "POST":
+        get_node_common_fields(request, file_node, group_id, GST_FILE)
+        file_node.license = license if license else file_node.license
+        file_node.save()
+
+    # to fill/update attributes of the node
+    get_node_metadata(request, file_node, GST_FILE)
+
+    teaches_list = request.POST.get('teaches','') # get the teaches list 
+
+    if teaches_list !='':
+        teaches_list=teaches_list.split(",")
+        create_grelation_list(file_node._id,"teaches",teaches_list)
+
+    assesses_list = request.POST.get('assesses_list','')
+    
+    if assesses_list !='':
+        assesses_list=assesses_list.split(",")
+        create_grelation_list(file_node._id,"assesses",assesses_list)
+
+    return HttpResponse("")
+
+# ---END of data review saving.

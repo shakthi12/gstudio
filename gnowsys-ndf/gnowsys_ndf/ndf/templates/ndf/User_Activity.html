@@ -1,14 +1,32 @@
+{% extends "ndf/base.html" %}
 {% load i18n %}
-{% load pagination_tags %}
 {% load ndf_tags %}
-{% load i18n %}
+{% load pagination_tags %}
+{% get_group_name groupid as group_name_tag %}
 
-<ul class="small-block-grid-1 medium-block-grid-2 large-block-grid-4">
-  {% autopaginate TASK_inst 23 %}
- 
-  {% for node in TASK_inst %}
+{% block meta_content %}
+
+<h2 class="subheader">{% trans "Activities" %}</h2>
+
+{% endblock %}
+
+
+
+
+
+
+{% block body_content %}
+{% autopaginate user_activity 15 %}
+	  
+<div class="content" id="Activity">
+      
+      <ul class="small-block-grid-1 medium-block-grid-2 large-block-grid-4">
+  
+  
+  {% for node in user_activity %}
     
   {% get_version_of_module node.pk as version %}
+  {% get_url node.pk as res_type %}
   <li class="card">
     <div class="course">
       <header>
@@ -17,7 +35,11 @@
           <a href="{% url 'tag_info' groupid tag %}"><span class="label">{{tag}}</span></a>
           {% endfor %}
         </div>
-          
+       {% if res_type == 'group' %}
+      <a  href="/{{node.pk}}">
+      {% elif res_type %}
+      	<a  href="{% url res_type group_id node.pk  %}"> 
+      {% endif %}   
         <div class="th"><img src="/static/ndf/scss/metastudio/logo.svg"></div>
 
         <h4>{{ node.name|truncatechars:20 }}</h4>
@@ -31,29 +53,26 @@
       </header>
 
       <p>{{ node.html_content|default_if_none:"Add some description."|safe|striptags|truncatechars:75 }}</p>
-
-      <a class="small button expand" href="{% url 'task_details' group_name node %}">{% trans "Detail" %}</a> 
-
-      {% get_user_object node.created_by as user_obj %}
-      {% ifequal user_obj.username user.username %}
-      <a class="button alert tiny" href="{% url 'delete_task' group_name node %}">{% trans "Delete" %}</a>
-      {% endifequal %}
-
+</a>      
       
     </div>
+   
   </li>  
 
   {% empty %}
     {% if not searching %}
     <div class="row">
-      <div class="small-12 columns">
-       <h5> {{send}}</b> </h5>
+      <div class="small-12 columns" align="left">
+       <h5> {% trans "No Recent Activities" %}</h5>
       </div>
     </div>
     {% endif %}
 
   {% endfor %}
 
-  {% paginate %}
-
 </ul>
+
+{% paginate %} 
+{% endblock %}
+
+

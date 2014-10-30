@@ -9,14 +9,14 @@ from django.http import Http404
 from django.template import Library
 from django.template import RequestContext,loader
 from django.shortcuts import render_to_response, render
-
+from mongokit import paginator
 
 from mongokit import IS
 
 ''' -- imports from application folders/files -- '''
-from gnowsys_ndf.settings import GAPPS as setting_gapps, DEFAULT_GAPPS_LIST, META_TYPE, CREATE_GROUP_VISIBILITY
-from gnowsys_ndf.settings import GSTUDIO_SITE_LOGO,GSTUDIO_COPYRIGHT,GSTUDIO_GIT_REPO,GSTUDIO_SITE_PRIVACY_POLICY, GSTUDIO_SITE_TERMS_OF_SERVICE,GSTUDIO_ORG_NAME,GSTUDIO_SITE_ABOUT,GSTUDIO_SITE_POWEREDBY,GSTUDIO_SITE_PARTNERS,GSTUDIO_SITE_GROUPS,GSTUDIO_SITE_CONTACT,GSTUDIO_ORG_LOGO,GSTUDIO_SITE_CONTRIBUTE,GSTUDIO_SITE_VIDEO,GSTUDIO_SITE_LANDING_PAGE
-
+from gnowsys_ndf.settings import GAPPS as setting_gapps, DEFAULT_GAPPS_LIST, META_TYPE, CREATE_GROUP_VISIBILITY, GSTUDIO_SITE_DEFAULT_LANGUAGE
+# from gnowsys_ndf.settings import GSTUDIO_SITE_LOGO,GSTUDIO_COPYRIGHT,GSTUDIO_GIT_REPO,GSTUDIO_SITE_PRIVACY_POLICY, GSTUDIO_SITE_TERMS_OF_SERVICE,GSTUDIO_ORG_NAME,GSTUDIO_SITE_ABOUT,GSTUDIO_SITE_POWEREDBY,GSTUDIO_SITE_PARTNERS,GSTUDIO_SITE_GROUPS,GSTUDIO_SITE_CONTACT,GSTUDIO_ORG_LOGO,GSTUDIO_SITE_CONTRIBUTE,GSTUDIO_SITE_VIDEO,GSTUDIO_SITE_LANDING_PAGE
+from gnowsys_ndf.settings import *
 
 from gnowsys_ndf.ndf.models import *
 from gnowsys_ndf.ndf.views.methods import check_existing_group,get_all_gapps,get_all_resources_for_group
@@ -25,8 +25,8 @@ from gnowsys_ndf.mobwrite.models import TextObj
 from pymongo.errors import InvalidId as invalid_id
 from django.contrib.sites.models import Site
 
-from gnowsys_ndf.settings import LANGUAGES
-from gnowsys_ndf.settings import GROUP_AGENCY_TYPES,AUTHOR_AGENCY_TYPES
+# from gnowsys_ndf.settings import LANGUAGES
+# from gnowsys_ndf.settings import GROUP_AGENCY_TYPES,AUTHOR_AGENCY_TYPES
 
 from gnowsys_ndf.ndf.node_metadata_details import schema_dict
 
@@ -148,6 +148,7 @@ def get_node_ratings(request,node):
                 dic={}
                 cnt=0
                 userratng=0
+                tot_ratng=0
                 for each in node.rating:
                      if each['user_id'] == user.id:
                              userratng=each['score']
@@ -158,8 +159,12 @@ def get_node_ratings(request,node):
                         tot_ratng=0
                         avg_ratng=0.0
                 else:
-                        tot_ratng=len(node.rating)-cnt
-                        avg_ratng=float(sum)/tot_ratng
+                        if node.rating:
+                           tot_ratng=len(node.rating)-cnt
+                        if tot_ratng:
+                           avg_ratng=float(sum)/tot_ratng
+                        else:
+                           avg_ratng=0.0
                 dic['avg']=avg_ratng
                 dic['tot']=tot_ratng
                 dic['user_rating']=userratng
@@ -333,17 +338,57 @@ def get_all_replies(parent):
 	 gs_collection = db[Node.collection_name]
 	 ex_reply=""
 	 if parent:
-		 ex_reply=gs_collection.GSystem.find({'$and':[{'_type':'GSystem'},{'prior_node':ObjectId(parent._id)}]})
+		 ex_reply=gs_collection.GSystem.find({'$and':[{'_type':'GSystem'},{'prior_node':ObjectId(parent._id)}],'status':{'$nin':['HIDDEN']}})
 		 ex_reply.sort('created_at',-1)
 	 return ex_reply
 
 
-@register.inclusion_tag('ndf/drawer_widget.html')
-def edit_drawer_widget(field, group_id, node, checked=None):
+@register.assignment_tag
+def get_metadata_values():
 
+	metadata = {"educationaluse": GSTUDIO_RESOURCES_EDUCATIONAL_USE, "interactivitytype": GSTUDIO_RESOURCES_INTERACTIVITY_TYPE,
+				"educationallevel": GSTUDIO_RESOURCES_EDUCATIONAL_LEVEL, "educationalsubject": GSTUDIO_RESOURCES_EDUCATIONAL_SUBJECT,
+				"timerequired": GSTUDIO_RESOURCES_TIME_REQUIRED, "audience": GSTUDIO_RESOURCES_AUDIENCE , "textcomplexity": GSTUDIO_RESOURCES_TEXT_COMPLEXITY,
+				"age_range": GSTUDIO_RESOURCES_AGE_RANGE ,"readinglevel": GSTUDIO_RESOURCES_READING_LEVEL}
+
+
+	return metadata
+
+
+@register.assignment_tag
+def get_attribute_value(node_id, attr):
+
+	node_attr = None
+	if node_id:
+		node = collection.Node.one({'_id': ObjectId(node_id) })
+		# print "node: ",node.name,"\n"
+		# print "attr: ",attr,"\n"
+
+		if node:
+			gattr = collection.Node.one({'_type': 'AttributeType', 'name': unicode(attr) })
+			node_attr = collection.Node.one({'_type': "GAttribute", 'attribute_type.$id': gattr._id, "subject": node._id })	
+
+	if node_attr:
+		attr_val = node_attr.object_value
+	else:
+		attr_val = ""
+
+	# print "attr_val: ",attr_val,"\n"
+	return attr_val
+
+
+
+
+
+@register.inclusion_tag('ndf/drawer_widget.html')
+def edit_drawer_widget(field, group_id, node=None, page_no=1, checked=None, **kwargs):
 	drawers = None
 	drawer1 = None
 	drawer2 = None
+
+	# Special case used while dealing with RelationType widget
+	left_drawer_content = None
+	paged_resources = ""
 
 	if node:
 		if field == "collection":
@@ -353,16 +398,25 @@ def edit_drawer_widget(field, group_id, node, checked=None):
 				checked = "Theme"
 			else:
 				checked = None
-			drawers = get_drawers(group_id, node._id, node.collection_set, checked)
+			drawers, paged_resources = get_drawers(group_id, node._id, node.collection_set, checked)
+
 		elif field == "prior_node":
 			checked = None
-			drawers = get_drawers(group_id, node._id, node.prior_node, checked)
+			drawers, paged_resources = get_drawers(group_id, node._id, node.prior_node, checked)
+
 		elif field == "module":
 			checked = "Module"
-			drawers = get_drawers(group_id, node._id, node.collection_set, checked)
-		elif type(checked) == list:
+			drawers, paged_resources = get_drawers(group_id, node._id, node.collection_set, checked)
+
+		elif field == "RelationType":
 			# Special case used while dealing with RelationType widget
-			drawers = get_drawers(group_id, node['_id'], node[field], checked)
+			if kwargs.has_key("left_drawer_content"):
+				widget_for = checked
+				checked = field
+				field = widget_for
+				left_drawer_content = kwargs["left_drawer_content"]
+
+				drawers = get_drawers(group_id, nid=node["_id"], nlist=node[field], checked=checked, left_drawer_content=left_drawer_content)
 		
 		drawer1 = drawers['1']
 		drawer2 = drawers['2']
@@ -377,17 +431,28 @@ def edit_drawer_widget(field, group_id, node, checked=None):
 		elif field == "module":
 			checked = "Module"
 
-		elif type(checked) == list:
+		elif field == "RelationType":
 			# Special case used while dealing with RelationType widget
-			checked = checked
+			if kwargs.has_key("left_drawer_content"):
+				widget_for = checked
+				checked = field
+				field = widget_for
+				left_drawer_content = kwargs["left_drawer_content"]
 
 		else:
 			# To make the collection work as Heterogenous one, by default
 			checked = None
 
-		drawer1 = get_drawers(group_id, None, [], checked)
+		if checked == "RelationType":
+			drawer1 = get_drawers(group_id, checked=checked, left_drawer_content=left_drawer_content)
 
-	return {'template': 'ndf/drawer_widget.html', 'widget_for': field, 'drawer1': drawer1, 'drawer2': drawer2, 'group_id': group_id,'groupid': group_id}
+		else:
+			drawer1, paged_resources = get_drawers(group_id, page_no=page_no, checked=checked)
+
+	return {'template': 'ndf/drawer_widget.html', 
+					'widget_for': field, 'drawer1': drawer1, 'drawer2': drawer2, 'page_info': paged_resources, 
+					'is_RT': checked, 'group_id': group_id, 'groupid': group_id
+				}
 
 @register.inclusion_tag('tags/dummy.html')
 def list_widget(fields_name, fields_type, fields_value, template1='ndf/option_widget.html',template2='ndf/drawer_widget.html'):
@@ -486,63 +551,6 @@ def shelf_allowed(node):
 			return allowed
 
 
-@register.inclusion_tag('ndf/gapps_menubar.html')
-def get_gapps_menubar(request, group_id):
-	"""Get Gapps menu-bar
-	"""
-	try:
-		selectedGapp = request.META["PATH_INFO"]
-		group_name = ""
-		collection = db[Node.collection_name]
-		gpid=collection.Group.one({'$and':[{'_type':u'Group'},{'name':u'home'}]})
-#    gst_cur = collection.Node.find({'_type': 'GSystemType', 'name': {'$in': GAPPS}})
-		gapps = {}
-		i = 0;
-		meta_type = collection.Node.one({'$and':[{'_type':'MetaType'},{'name': META_TYPE[0]}]})
-		
-		GAPPS = collection.Node.find({'$and':[{'_type':'GSystemType'},{'member_of':{'$all':[meta_type._id]}}]}).sort("created_at")
-		group_obj=collection.Group.one({'_id':ObjectId(group_id)})
-
-		# Forcefully setting GAPPS (Image, Video & Group) to be hidden from group(s)
-		not_in_menu_bar = []
-		if group_obj.name == "home":
-			# From "home" group hide following GAPPS: Image, Video
-			not_in_menu_bar = ["Image", "Video"]
-		else :
-			# From other remaining groups hide following GAPPS: Group, Image, Video
-			not_in_menu_bar = ["Image", "Video", "Group"]
-
-		# Defalut GAPPS to be listed on gapps-meubar/gapps-iconbar
-		global DEFAULT_GAPPS_LIST
-		if not DEFAULT_GAPPS_LIST:
-			# If DEFAULT_GAPPS_LIST is empty, set bulit-in GAPPS (setting_gapps) list from settings file
-			DEFAULT_GAPPS_LIST = setting_gapps
-
-		for node in GAPPS:
-			#node = collection.Node.one({'_type': 'GSystemType', 'name': app, 'member_of': {'$all': [meta_type._id]}})
-			if node:
-				if node.name not in not_in_menu_bar and node.name in DEFAULT_GAPPS_LIST:
-					i = i+1;
-					gapps[i] = {'id': node._id, 'name': node.name.lower()}
-
-		if len(selectedGapp.split("/")) > 2 :
-			selectedGapp = selectedGapp.split("/")[2]
-		else :
-			selectedGapp = selectedGapp.split("/")[1]
-		if group_id == None:
-			group_id=gpid._id
-		group_obj=collection.Group.one({'_id':ObjectId(group_id)})
-		if not group_obj:
-			group_id=gpid._id
-		else :
-			group_name = group_obj.name
-
-		return {'template': 'ndf/gapps_menubar.html', 'request': request, 'gapps': gapps, 'selectedGapp':selectedGapp,'groupid':group_id, 'group_name':group_name}
-	except invalid_id:
-		gpid=collection.Group.one({'$and':[{'_type':u'Group'},{'name':u'home'}]})
-		group_id=gpid._id
-		return {'template': 'ndf/gapps_menubar.html', 'request': request, 'gapps': gapps, 'selectedGapp':selectedGapp,'groupid':group_id}
-
 # This function is a duplicate of get_gapps_menubar and modified for the gapps_iconbar.html template to shows apps in the sidebar instead
 @register.inclusion_tag('ndf/gapps_iconbar.html')
 def get_gapps_iconbar(request, group_id):
@@ -607,7 +615,7 @@ def thread_reply_count( oid ):
 	'''
 	Method to count total replies for the thread.
 	'''
-	thr_rep = collection.GSystem.find({'$and':[{'_type':'GSystem'},{'prior_node':ObjectId(oid)}]})
+	thr_rep = collection.GSystem.find({'$and':[{'_type':'GSystem'},{'prior_node':ObjectId(oid)}],'status':{'$nin':['HIDDEN']}})
 	global global_thread_rep_counter		# to acces global_thread_rep_counter as global and not as local, 
 	global global_thread_latest_reply
 
@@ -705,7 +713,7 @@ def get_disc_replies( oid, group_id, global_disc_all_replies, level=1 ):
 def get_forum_twists(forum):
 	gs_collection = db[Node.collection_name]
 	ret_replies = []
-	exstng_reply = gs_collection.GSystem.find({'$and':[{'_type':'GSystem'},{'prior_node':ObjectId(forum._id)}]})
+	exstng_reply = gs_collection.GSystem.find({'$and':[{'_type':'GSystem'},{'prior_node':ObjectId(forum._id)}],'status':{'$nin':['HIDDEN']}})
 	exstng_reply.sort('created_at')
 	global global_thread_rep_counter 		# to acces global global_thread_rep_counter and reset it to zero
 	global global_thread_latest_reply
@@ -718,10 +726,7 @@ def get_forum_twists(forum):
 		each['thread_reply_count'] = thread_reply_count(each._id)
 		each['latest_reply'] = global_thread_latest_reply
 		ret_replies.append(each)
-
 	return ret_replies
-
-
 lp=[]
 def get_rec_objs(ob_id):
 	lp.append(ob_id)
@@ -938,15 +943,22 @@ def get_edit_url(groupid):
 	if node._type == 'GSystem':
 
 		type_name = collection.Node.one({'_id': node.member_of[0]}).name
-
+                
 		if type_name == 'Quiz':
 			return 'quiz_edit'    
 		elif type_name == 'Page':
 			return 'page_create_edit' 
+		elif type_name == 'Term':
+			return 'term_create_edit' 
 		elif type_name == 'Theme' or type_name == 'Topic':
 			return 'theme_topic_create'
 		elif type_name == 'QuizItem':
 			return 'quiz_item_edit'
+                elif type_name == 'Forum':
+                        return 'edit_forum'
+                elif type_name == 'Twist' or type_name == 'Thread':
+                        return 'edit_thread'
+
 
 	elif node._type == 'Group' or node._type == 'Author' :
 		return 'edit_group'
@@ -1003,6 +1015,8 @@ def get_create_url(groupid):
       return 'quiz_create'    
     elif type_name == 'Page':
       return 'page_create_edit' 
+    elif type_name == 'Term':
+      return 'term_create_edit' 
     elif type_name == 'Theme' or type_name == 'Topic':
 		return 'theme_topic_create'
     elif type_name == 'QuizItem':
@@ -1292,7 +1306,6 @@ def get_grid_fs_object(f):
 def get_class_list(group_id,class_name):
 	"""Get list of class 
 	"""
-        print "in get_class"
 	class_list = ["GSystem", "File", "Group", "GSystemType", "RelationType", "AttributeType", "MetaType", "GRelation", "GAttribute"]
 	return {'template': 'ndf/admin_class.html', "class_list": class_list, "class_name":class_name,"url":"data","groupid":group_id}
 
@@ -1448,7 +1461,7 @@ def resource_info(node):
 			grname=re.split(r'[/=]',node)
 			group_gst=col_Group.Group.one({'_id':ObjectId(grname[1])})
 		return group_gst
-																
+
 		
 @register.assignment_tag
 def edit_policy(groupid,node,user):
@@ -1655,6 +1668,26 @@ def get_resource_collection(groupid, resource_type):
     error_message = "\n CollectionsFindError: " + str(e) + " !!!\n"
     raise Exception(error_message)
 
+@register.assignment_tag
+def app_translations(request, app_dict):
+   app_id=app_dict['id']
+   get_translation_rt=collection.Node.one({'$and':[{'_type':'RelationType'},{'name':u"translation_of"}]})
+   if request.LANGUAGE_CODE != GSTUDIO_SITE_DEFAULT_LANGUAGE:
+      get_rel=collection.Node.one({'$and':[{'_type':"GRelation"},{'relation_type.$id':get_translation_rt._id},{'subject':ObjectId(app_id)}]})
+      if get_rel:
+         get_trans=collection.Node.one({'_id':get_rel.right_subject})
+         if get_trans.language == request.LANGUAGE_CODE:
+            return get_trans.name
+         else:
+            app_name=collection.Node.one({'_id':ObjectId(app_id)})
+            return app_name.name
+      else:
+         app_name=collection.Node.one({'_id':ObjectId(app_id)})
+         return app_name.name
+   else:
+      app_name=collection.Node.one({'_id':ObjectId(app_id)})
+      return app_name.name
+      
 @register.assignment_tag
 def get_preferred_lang(request, group_id, nodes, node_type):
    group=collection.Node.one({'_id':(ObjectId(group_id))})
@@ -1878,6 +1911,7 @@ def html_widget(groupid, node_id, field):
     field_altnames = field['altnames']
     field_value = field['value']
     # print "\n IS: ", IS
+
     if type(field_type) == IS:
       field_value_choices = field_type._operands
       # print "\n operands: ", field_value
@@ -1913,6 +1947,7 @@ def html_widget(groupid, node_id, field):
 
     # if field['name'] == "tot_when":
     #   print "\n ", field['name'], " -- ", field_type, " -- ", type(field_type), "\n"
+
     is_list_of = (field_type in LIST_OF)
 
     is_special_field = (field['name'] in SPECIAL_FIELDS.keys())
@@ -1944,7 +1979,13 @@ def html_widget(groupid, node_id, field):
                                       )
                                 )
 
-      field_value = [str(each._id) for each in field_value]
+      if field_value:
+	      if type(field_value[0]) == ObjectId or ObjectId.is_valid(field_value[0]):
+	      	field_value = [str(each) for each in field_value]
+
+	      else:
+	      	field_value = [str(each._id) for each in field_value]
+
       if node_id:
       	node_dict[field['name']] = [ObjectId(each) for each in field_value]
 
@@ -2027,4 +2068,22 @@ def jsonify(value):
   """
   return json.dumps(value)
 
+@register.assignment_tag
+def get_university(college_name):
+	"""
+	Returns university name to which given college is affiliated to.
+	"""
+	try:
+		college = collection.Node.one({'_type': "GSystemType", 'name': u"College"})
+		sel_college = collection.Node.one({'member_of': college._id, 'name': unicode(college_name)})
 
+		university_name = None
+		if sel_college:
+			university = collection.Node.one({'_type': "GSystemType", 'name': u"University"})
+			sel_university = collection.Node.one({'member_of': university._id, 'relation_set.affiliated_college': sel_college._id})
+			university_name = sel_university.name
+
+		return university_name
+	except Exception as e:
+		error_message = "UniversityFindError: " + str(e) + " !!!"
+		# raise e
