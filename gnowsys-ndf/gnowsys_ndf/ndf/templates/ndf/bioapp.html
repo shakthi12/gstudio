@@ -37,8 +37,8 @@ background-repeat:no-repeat; background-size: 48px 48px
 {% blocktrans %} <p class="text-justify">A <b>Quiz</b> is a sequenced collection of <b>quiz items</b>. A quiz-item can be any of the three types: <strong><i>short response, single-choice</i></strong> and <strong><i>multiple-choice</i></strong>. <i>submit response</i> and <i>match the following</i> types will be implemented very soon.</p>
     <p class="text-justify">You can build a quiz in two ways:
       <ol  class="text-justify">
-	<li>By editing, Quiz node (via collection-list).</li>
-	<li>By using 'Quiz-Item' button corresponding to the Quiz.</li>
+	<li>By editing, Bioapp node (via collection-list).</li>
+	<li>By using 'Bioapp-Item' button corresponding to the Quiz.</li>
       </ol>    </p>
 {% endblocktrans %}
 
@@ -46,16 +46,16 @@ background-repeat:no-repeat; background-size: 48px 48px
     <!-- Add button -->
     {% if user.is_authenticated %}
 
-    <a href="{% url 'quiz_create' group_name_tag %}" class="button small">{% trans "+ Add Quiz" %}</a>
-    <a href="{% url 'quiz_item_create' group_name_tag %}" class="button small right">   
+    <a href="{% url 'bioapp_create' group_name_tag %}" class="button small">{% trans "+ Add Quiz" %}</a>
+    <a href="{% url 'bioapp_item_create' group_name_tag %}" class="button small right">   
 {% trans "+ Add" %} {{title}}</a>
 {% endif %}
 
 {% endblock %}
 
 {% block body_content %}
-{% get_group_name groupid as group_name_tag %}
-<form id="quiz_item_create_form" method="POST" action="">
+
+<form id="bioapp_item_create_form" method="POST" action="">
 {% csrf_token %}
 <header>
 <nav class="medium-12 columns">

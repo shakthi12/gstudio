@@ -14,8 +14,8 @@
     First name: <input type="text" name="fname">Middle name: <input type="text" name="mname">Last name: <input type="text" name="lname"><br>
    <li>Contact Address<textarea></textarea></li>
    <li>Contact Email<input type="text" name="email"></li>
-   <li>Land line<input type="text"></li>
-   <li>Mobile<input type="text"></li>
+   <li>Land line<input type="number"></li>
+   <li>Mobile<input type="number"></li>
    <li>DOB
     <select name="DOBDay">
     <option value="1">1</option>
@@ -270,6 +270,7 @@ End_time</select>
 <option value="1993">1993</option>
 <option value="1994">1994</option>
 </select>
+<input type="button" value="Save" onclick="msg()"> 
 </ol>
 </p>
 {% endblock %}
